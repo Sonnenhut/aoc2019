@@ -2,7 +2,7 @@
 
 Attempt to solve aoc2019 in rust.
 
-
+---
 ##### Learning stuff
 
 Other rust aoc solutions: 
