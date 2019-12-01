@@ -8,6 +8,9 @@ Attempt to solve aoc2019 in rust.
 Other rust aoc solutions: 
 https://github.com/BenoitZugmeyer/RustyAdventOfCode/blob/master/2015/src/bin/day01.rs
 
+Successors on iterators:
+https://www.reddit.com/r/adventofcode/comments/e4axxe/2019_day_1_solutions/f99795h/
+
 ###### Ownership
 
 ```

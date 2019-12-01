@@ -9,13 +9,13 @@ fn main() {
 fn pt1(masses: &Vec<i32>) -> i32 {
     masses.iter()
         .map(|mass| fuel(mass))
-        .fold(0, |acc, x| acc + x)
+        .sum()
 }
 
 fn pt2(masses: &Vec<i32>) -> i32 {
     masses.iter()
         .map(|mass| total_fuel(mass))
-        .fold(0, |acc, x| acc + x)
+        .sum()
 }
 
 fn fuel(mass: &i32) -> i32 {
