@@ -31,14 +31,13 @@ fn pt2(nums: &Vec<usize>) -> usize {
 fn compute_pt1(nums: &Vec<usize>) -> Vec<usize> {
     let res  = &mut nums.clone();
 
-    let all_indexes : Vec<usize>= (0..res.len()).collect();
-    for indexes in all_indexes.chunks(4) {
-        let op = res[indexes[0]];
+    for instr_idx in (0..res.len()).step_by(4) {
+        let op = res[instr_idx];
         if op == 99 {break;}
 
-        let csr_1 = res[indexes[1]];
-        let csr_2 = res[indexes[2]];
-        let csr_target = res[indexes[3]];
+        let csr_1 = res[instr_idx+1];
+        let csr_2 = res[instr_idx+2];
+        let csr_target = res[instr_idx+3];
         if op == 1 {
             res[csr_target] = res[csr_1] + res[csr_2];
         } else if op == 2 {
