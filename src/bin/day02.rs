@@ -3,7 +3,7 @@ use aoc2019::read_lines;
 fn main() {
     let nums: Vec<usize> = read_lines(2)[0].split(',').map(|s| s.parse().unwrap()).collect();
     println!("pt1: {}", pt1(&nums)); // 9706670
-    //println!("pt2: {}", pt2(&masses)); //
+    println!("pt2: {}", pt2(&nums)); // 2552
 }
 
 fn pt1(nums: &Vec<usize>) -> usize {
@@ -11,6 +11,21 @@ fn pt1(nums: &Vec<usize>) -> usize {
     input[1] = 12;
     input[2] = 2;
     return compute_pt1(input)[0];
+}
+
+fn pt2(nums: &Vec<usize>) -> usize {
+    for noun in 0..100 {
+        for verb in 0..100 {
+            let input = &mut nums.clone();
+            input[1] = noun;
+            input[2] = verb;
+            let res = compute_pt1(input)[0];
+            if res == 19690720 {
+                return 100 * noun + verb;
+            }
+        }
+    }
+    0
 }
 
 fn compute_pt1(nums: &Vec<usize>) -> Vec<usize> {
