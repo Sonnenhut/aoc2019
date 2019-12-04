@@ -1,27 +1,40 @@
-use aoc2019::read_lines;
-use std::ops::Add;
-use std::collections::HashSet;
 use std::borrow::Borrow;
+use std::collections::HashSet;
+use std::iter::successors;
+use std::ops::Add;
+
+use aoc2019::read_lines;
 
 fn main() {
     let nums: Vec<Vec<String>> = read_lines(3).into_iter().map(|l| parse_wire(&l)).collect();
     println!("pt1: {}", pt1(&nums)); // 375
-    //println!("pt2: {}", pt2(&nums)); //
+    println!("pt2: {}", pt2(&nums)); // 14746
 }
-fn pt1(wires: &Vec<Vec<String>>) -> u32 {
-    let mut csr = Point::center();
-    let all_points : Vec<Point> = wires.iter().flat_map(|wire| path(wire)).collect();
+fn pt1(wire_definitions: &Vec<Vec<String>>) -> u32 {
+    let all_points : Vec<Point> = wire_definitions.iter().flat_map(|wire| path(wire)).collect();
     duplicates(&all_points).iter().map(|p| p.distance_to_center()).min().unwrap_or_default()
+}
+
+fn pt2(wire_definitions: &Vec<Vec<String>>) -> u32 {
+    let wires : Vec<Vec<Point>> = wire_definitions.iter().map(|wire| path(wire)).collect();
+    let all_points : Vec<Point> = wires.clone().into_iter().flat_map(|wire| wire).collect();
+    duplicates(&all_points).iter().filter_map(|p| {
+        let lengths : Vec<u32> = wires.iter()
+                                        .map(|wire| wire.iter().position(|other|*other == *p).unwrap_or_default() as u32)
+                                        .collect();
+        if lengths.contains(&0) {None} else {Some(lengths.iter().sum())} // ignore where the point is tripping over itself
+    }).min().unwrap_or_default()
 }
 
 fn path(wire: &Vec<String>) -> Vec<Point> {
     let mut csr = Point::center();
-    let res: HashSet<Point> = wire.iter().flat_map(|direction| {
+    let mut res :Vec<Point> = wire.iter().flat_map(|direction| {
         let inner = csr.in_direction(direction);
         csr = *inner.last().unwrap();
         inner
     }).collect();
-    res.into_iter().collect()
+    res.insert(0, csr);
+    res
 }
 
 fn duplicates(v: &Vec<Point>) -> Vec<Point> {
@@ -42,9 +55,6 @@ impl Point {
     fn center() -> Point{
         Point {x: 0,y: 0}
     }
-    fn new(x:i32, y: i32) -> Point{
-        Point {x, y}
-    }
     fn in_direction(&self, other: &str) -> Vec<Point> {
         if other.len() >= 2 {
             let dir = other.chars().nth(0).unwrap();
@@ -59,7 +69,6 @@ impl Point {
                 } else if dir == 'R' {
                     Some(Point {x: self.x + n, ..*self})
                 } else {
-                    println!("LANDED AT ELSE!");
                     None
                 }).collect();
         }
@@ -87,6 +96,12 @@ mod test {
         assert_eq!(pt1(&vec![parse_wire("R8,U5,L5,D3"),parse_wire("U7,R6,D4,L4")]), 6);
         assert_eq!(pt1(&vec![parse_wire("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51"),parse_wire("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7")]), 135);
         assert_eq!(pt1(&vec![parse_wire("R75,D30,R83,U83,L12,D49,R71,U7,L72"),parse_wire("U62,R66,U55,R34,D71,R55,D58,R83")]), 159);
+    }
+    #[test]
+    fn test_pt2() {
+        assert_eq!(pt2(&vec![parse_wire("R8,U5,L5,D3"),parse_wire("U7,R6,D4,L4")]), 30);
+        assert_eq!(pt2(&vec![parse_wire("R75,D30,R83,U83,L12,D49,R71,U7,L72"),parse_wire("U62,R66,U55,R34,D71,R55,D58,R83")]), 610);
+        assert_eq!(pt2(&vec![parse_wire("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51"),parse_wire("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7")]), 410);
     }
     #[test]
     fn test_distance() {
