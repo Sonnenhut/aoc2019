@@ -4,19 +4,38 @@ use std::iter::successors;
 use aoc2019::read_lines;
 use aoc2019::intcode::IntCode;
 use std::collections::VecDeque;
+use std::ops::{Range, RangeInclusive};
 
 fn main() {
     let nums: Vec<i32> = read_lines(7)[0].split(',').map(|s| s.parse().unwrap()).collect();
-    println!("pt1: {}", max_thruster_out(&nums)); //
-    //println!("pt2: {}", max_thruster_out(&nums)); //
+    println!("pt1: {}", max_thruster_out(&nums)); // 262086
+    println!("pt2: {}", max_feedback_loop(&nums)); // 5371621
 }
 
-fn run_amp(inputs: Vec<i32>, pgm: Vec<i32>) -> i32 {
-    IntCode::resolve(&inputs, &pgm)
+fn max_feedback_loop(pgm: &Vec<i32>) -> i32 {
+    sequences((5..=9)).iter()
+        .map(|seq| feedback_loop(&seq, &pgm))
+        .max().unwrap()
+}
+
+fn feedback_loop(seq: &Vec<u32>, pgm: &Vec<i32>) -> i32 {
+    let mut programs : Vec<IntCode> = seq.iter().map(|phase_instr| IntCode::create(&vec![*phase_instr as i32], &pgm)).collect();
+    let mut last_out = Some(0);
+    loop {
+        for pgm in programs.iter_mut() {
+            pgm.push_input(last_out.unwrap() as i32);
+            let out = pgm.next();
+            if out.is_none() {
+                return last_out.unwrap();
+            } else {
+                last_out = out;
+            }
+        }
+    }
 }
 
 fn max_thruster_out(pgm: &Vec<i32>) -> i32 {
-    sequences().iter()
+    sequences((0..=4)).iter()
         .map(|seq| thruster_out(&seq, &pgm))
         .max().unwrap()
 }
@@ -24,7 +43,7 @@ fn max_thruster_out(pgm: &Vec<i32>) -> i32 {
 fn thruster_out(seq: &Vec<u32>, pgm: &Vec<i32>) -> i32 {
     let mut remaining_seq = seq.clone();
     successors(Some(0), |last| {
-        if(remaining_seq.is_empty()) {
+        if remaining_seq.is_empty() {
             None
         } else {
             let out = IntCode::resolve(&vec![remaining_seq.remove(0) as i32, *last as i32], &pgm);
@@ -33,8 +52,8 @@ fn thruster_out(seq: &Vec<u32>, pgm: &Vec<i32>) -> i32 {
     }).max().unwrap()
 }
 
-fn sequences() -> Vec<Vec<u32>> {
-    let mut queue = (0..5).collect::<VecDeque<_>>();
+fn sequences(range: RangeInclusive<u32>) -> Vec<Vec<u32>> {
+    let mut queue = range.collect::<VecDeque<_>>();
     permute(&mut Vec::new(), &mut queue)
 }
 
@@ -69,8 +88,24 @@ mod test {
     fn test_max_thruster_out() {
         assert_eq!(max_thruster_out(&vec![3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0]),43210);
         assert_eq!(max_thruster_out( &vec![3,23,3,24,1002,24,10,24,1002,23,-1,23,
-                                                        101,5,23,23,1,24,23,23,4,23,99,0,0]),54321);
+                                           101,5,23,23,1,24,23,23,4,23,99,0,0]),54321);
         assert_eq!(max_thruster_out( &vec![3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,
-                                                        1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0]),65210);
+                                           1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0]),65210);
+    }
+    #[test]
+    fn test_feedback_loop() {
+        assert_eq!(feedback_loop(&vec![9,8,7,6,5], &vec![3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,
+                                                         27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5]),139629729);
+        assert_eq!(feedback_loop(&vec![9,7,8,5,6], &vec![3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,
+                                                         -5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,
+                                                         53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10]),18216);
+    }
+    #[test]
+    fn test_max_feedback_loop() {
+        assert_eq!(max_feedback_loop(&vec![3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,
+                                                         27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5]),139629729);
+        assert_eq!(max_feedback_loop(&vec![3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,
+                                                         -5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,
+                                                         53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10]),18216);
     }
 }

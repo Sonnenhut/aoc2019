@@ -1,5 +1,5 @@
 impl IntCode {
-    fn create(inputs: &Vec<i32>, pgm: &Vec<i32>) -> IntCode{
+    pub fn create(inputs: &Vec<i32>, pgm: &Vec<i32>) -> IntCode{
         IntCode {inputs: inputs.clone(), csr: Some(0), pgm: pgm.clone(), output:vec![]}
     }
     pub fn resolve(inputs: &Vec<i32>, pgm: &Vec<i32>) -> i32 {
@@ -8,12 +8,25 @@ impl IntCode {
     fn csr_at(&mut self, new_csr: usize) {
         self.csr = Some(new_csr);
     }
-    fn run(&mut self) -> i32{
-        let scope = &mut self.pgm;
+    fn run(&mut self) -> i32 {
         while self.csr.is_some() {
             self.csr = self.run_single();
         }
         *self.output.last().unwrap_or(&0)
+    }
+    pub fn push_input(&mut self, input : i32) {
+        self.inputs.push(input);
+    }
+    pub fn next(&mut self) -> Option<i32> { // until next output
+        let last_out = self.output.clone();
+        while self.csr.is_some() {
+            self.csr = self.run_single();
+            if last_out != self.output {
+                // some new output, send it back
+                return self.output.last().cloned();
+            }
+        }
+        return None
     }
     fn run_single(&mut self) -> Option<usize> {
         let csr = self.csr.unwrap();
