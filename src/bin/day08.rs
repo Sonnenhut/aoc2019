@@ -15,8 +15,8 @@ fn main() {
 fn merge(layers: &Vec<Vec<String>>) -> Vec<String> {
     let width = layers[0][0].len();
     let height = layers[0].len();
-    let initial : String = repeat("2").take(width).collect::<Vec<&str>>().join("");
-    let res : Vec<String> = layers.iter().fold( vec![initial;height], |acc, layer| {
+    let transparent_row: String = repeat("2").take(width).collect::<Vec<&str>>().join("");
+    let res : Vec<String> = layers.iter().fold(vec![transparent_row; height], |acc, layer| {
         acc.iter()
             .zip(layer.iter())
             .map(|tuple| merge_row(tuple.0, tuple.1))
