@@ -1,11 +1,40 @@
 
 use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
+use std::iter::repeat;
 
 fn main() {
     let layers: Vec<Vec<String>> = split_layers(25,6,read_lines(8)[0].clone());
     println!("pt1: {}", checksum(&layers)); // 1820
-    //println!("pt2: {}", max_feedback_loop(&nums)); //
+    println!("pt2: {}", merge(&layers).join("")); // ZUKCJ
+    merge(&layers)
+        .iter()
+        .map(|s| s.replace("0"," "))
+        .map(|s| s.replace("1","█"))
+        .inspect(|row| println!("{:?}", row)).collect::<Vec<String>>().join("");
+}
+
+fn merge(layers: &Vec<Vec<String>>) -> Vec<String> {
+    let width = layers[0][0].len();
+    let height = layers[0].len();
+    let initial : String = repeat("2").take(width).collect::<Vec<&str>>().join("");
+    let res : Vec<String> = layers.iter().fold( vec![initial;height], |acc, layer| {
+        acc.iter()
+            .zip(layer.iter())
+            .map(|tuple| merge_row(tuple.0, tuple.1))
+            .collect()
+    });
+    res
+}
+
+fn merge_row(above: &str, below: &str) -> String {
+    above.chars().zip(below.chars())
+        .map(|tuple| if tuple.0 == '2' { tuple.1} else {tuple.0})
+        .collect()
+}
+
+fn as_msg(layer: &Vec<String>) -> String {
+    layer.join("")
 }
 
 fn checksum(layers: &Vec<Vec<String>>) -> usize {
@@ -60,8 +89,13 @@ mod test {
 
     #[test]
     fn test_ex() {
-        let  layers = split_layers(3,2,String::from("123456789012"));
+        let mut layers = split_layers(3,2,String::from("123456789012"));
         assert_eq!(layers, vec![vec!["123","456"],vec!["789","012"]]);
+        assert_eq!(as_msg(&vec![String::from("123"),String::from("456")]), "123456");
+
+
+        layers = split_layers(2,2,String::from("0222112222120000"));
+        assert_eq!(merge(&layers), vec![String::from("01"), String::from("10")]);
     }
 
 }
