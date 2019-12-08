@@ -1,5 +1,3 @@
-
-use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
 use std::iter::repeat;
 
@@ -31,10 +29,6 @@ fn merge_row(above: &str, below: &str) -> String {
     above.chars().zip(below.chars())
         .map(|tuple| if tuple.0 == '2' { tuple.1} else {tuple.0})
         .collect()
-}
-
-fn as_msg(layer: &Vec<String>) -> String {
-    layer.join("")
 }
 
 fn checksum(layers: &Vec<Vec<String>>) -> usize {
