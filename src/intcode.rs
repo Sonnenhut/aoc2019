@@ -31,8 +31,7 @@ impl IntCode {
     fn run_single(&mut self) -> Option<usize> {
         let csr = self.csr.unwrap();
         let (op, param_modes) = parse_op(self.pgm[csr] as u32);
-        //let curr_view:Vec<i64> = scope.clone().into_iter().skip(csr).take(min(4, scope.len())).collect();
-        //println!("{:?}", curr_view);
+
         let(p1,p2) = self.params(&param_modes);
         if op == 1 { // add
             self.write_at(3, &param_modes, p1? + p2?);
@@ -63,7 +62,7 @@ impl IntCode {
         } else if op == 99 {
             None
         } else {
-            panic!("Found an unknown opcode");
+            panic!("Unknown opcode");
         }
     }
     fn next_input(&mut self) -> i64{
@@ -81,10 +80,10 @@ impl IntCode {
     fn params(&self,param_modes: &Vec<u32>) -> (Option<i64>, Option<i64>){
         let csr = self.csr.unwrap();
         let p1 : Option<i64> = self.resolve_param_csr(1,&param_modes)
-            .and_then(|c| Some(self.get_at(c as usize)))
-            .or_else(|| Some(self.get_at(csr+1)));
+            .map(|c| self.get_at(c as usize)) // at csr
+            .or_else(|| Some(self.get_at(csr+1))); // immediate
         let p2 :Option<i64> = self.resolve_param_csr(2,&param_modes)
-            .and_then(|c| Some(self.get_at(c as usize)))
+            .map(|c| self.get_at(c as usize))
             .or_else(|| Some(self.get_at(csr+2)));
 
         (p1,p2)
@@ -109,9 +108,8 @@ impl IntCode {
             panic!("ParamMode not defined!")
         }
     }
-
-
 }
+
 fn resolve_param(mode : u32, param: i64, scope: &Vec<i64>) -> Option<i64> {
     if mode == 0 {
         scope.get(param as usize).cloned()
