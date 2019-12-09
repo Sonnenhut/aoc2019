@@ -85,7 +85,6 @@ mod test {
     fn test_ex() {
         let mut layers = split_layers(3,2,String::from("123456789012"));
         assert_eq!(layers, vec![vec!["123","456"],vec!["789","012"]]);
-        assert_eq!(as_msg(&vec![String::from("123"),String::from("456")]), "123456");
 
 
         layers = split_layers(2,2,String::from("0222112222120000"));

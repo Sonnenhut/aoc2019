@@ -1,7 +1,4 @@
-use std::borrow::Borrow;
 use std::collections::HashSet;
-use std::iter::successors;
-use std::ops::Add;
 
 use aoc2019::read_lines;
 
@@ -11,7 +8,12 @@ fn main() {
     println!("pt2: {}", pt2(&nums)); // 14746
 }
 fn pt1(wire_definitions: &Vec<Vec<String>>) -> u32 {
-    let all_points : Vec<Point> = wire_definitions.iter().flat_map(|wire| path(wire)).collect();
+    let all_points : Vec<Point> = wire_definitions.iter().flat_map(|wire| {
+        let mut p = path(wire);
+        p.sort();
+        p.dedup();
+        p
+    }).collect();
     duplicates(&all_points).iter().map(|p| p.distance_to_center()).min().unwrap_or_default()
 }
 
@@ -90,6 +92,14 @@ fn parse_wire(s: &str) -> Vec<String> {
 mod test {
     use super::*;
 
+
+    #[test]
+    fn regression() {
+        let nums: Vec<Vec<String>> = read_lines(3).into_iter().map(|l| parse_wire(&l)).collect();
+        assert_eq!(pt1(&nums), 375);
+        assert_eq!(pt2(&nums), 14746);
+    }
+
     #[test]
     fn test_pt1() {
         assert_eq!(pt1(&vec![parse_wire("U3,R3,D1,L4")]), 0); // wire tripping over itself is not valid
@@ -105,12 +115,12 @@ mod test {
     }
     #[test]
     fn test_distance() {
-        assert_eq!(Point::center().distance(&Point::new(-2,-3)), 5);
-        assert_eq!(Point::center().distance(&Point::new(2,-3)), 5);
+        assert_eq!(Point::center().distance(&Point{x:-2,y:-3}), 5);
+        assert_eq!(Point::center().distance(&Point{x:2,y:-3}), 5);
     }
     #[test]
     fn test_duplicates() {
-        assert_eq!(duplicates(&vec![Point::center(),Point::center(), Point::new(1,1)]), vec![Point::center()]);
+        assert_eq!(duplicates(&vec![Point::center(),Point::center(), Point{x:1,y:1}]), vec![Point::center()]);
     }
     #[test]
     fn test_direction() {

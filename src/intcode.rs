@@ -5,9 +5,6 @@ impl IntCode {
     pub fn resolve(inputs: &Vec<i64>, pgm: &Vec<i64>) -> i64 {
         IntCode::create(inputs, pgm).run()
     }
-    fn csr_at(&mut self, new_csr: usize) {
-        self.csr = Some(new_csr);
-    }
     fn run(&mut self) -> i64 {
         while self.csr.is_some() {
             self.csr = self.run_single();
@@ -110,16 +107,6 @@ impl IntCode {
     }
 }
 
-fn resolve_param(mode : u32, param: i64, scope: &Vec<i64>) -> Option<i64> {
-    if mode == 0 {
-        scope.get(param as usize).cloned()
-    } else if mode == 1 {
-        Some(param)
-    } else {
-        panic!("ParamMode not defined!")
-    }
-}
-
 pub struct IntCode {
     inputs: Vec<i64>,
     output: Vec<i64>,
@@ -146,8 +133,6 @@ mod test {
         assert_eq!(parse_op(1002), (2,vec![0,1,0]));
         assert_eq!(parse_op(1102), (2, vec![1,1,0]));
         assert_eq!(parse_op(10002), (2, vec![0,0,1]));
-        assert_eq!(resolve_param(0,0, &vec![99]), Some(99));
-        assert_eq!(resolve_param(1,0, &vec![99]), Some(0));
     }
     #[test]
     fn test_single_instr() {
@@ -156,7 +141,7 @@ mod test {
         toTest.csr = toTest.run_single();
         assert_eq!(toTest.csr, Some(4));
         assert_eq!(toTest.pgm, vec![2,0,0,0,99]);
-        toTest.csr_at(0);
+        toTest.csr = Some(0);
         toTest.csr = toTest.run_single();
         assert_eq!(toTest.csr, Some(4));
         assert_eq!(toTest.pgm, vec![4,0,0,0,99]);
@@ -269,11 +254,11 @@ mod test {
 
         toTest = IntCode::create(&vec![1], &vec![1,6,7,0,99]);
         toTest.csr = toTest.run_single();
-        assert_eq!(toTest.pgm, vec![3,6,7,0,99]);
+        assert_eq!(toTest.pgm, vec![0,6,7,0,99]);
 
         toTest = IntCode::create(&vec![1], &vec![1,7,8,0,99]);
         toTest.csr = toTest.run_single();
-        assert_eq!(toTest.pgm, vec![5,7,8,0,99]);
+        assert_eq!(toTest.pgm, vec![0,7,8,0,99]);
     }
 
     #[test]

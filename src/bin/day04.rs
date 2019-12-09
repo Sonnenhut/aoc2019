@@ -1,9 +1,3 @@
-use std::borrow::Borrow;
-use std::collections::HashSet;
-use std::iter::{successors, FromIterator};
-use std::ops::Add;
-
-use aoc2019::read_lines;
 
 fn main() {
     println!("pt1: {}", pt1(168630,718098)); // 1686
