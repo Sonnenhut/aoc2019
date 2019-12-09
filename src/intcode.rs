@@ -1,23 +1,23 @@
 impl IntCode {
-    pub fn create(inputs: &Vec<i32>, pgm: &Vec<i32>) -> IntCode{
-        IntCode {inputs: inputs.clone(), csr: Some(0), pgm: pgm.clone(), output:vec![]}
+    pub fn create(inputs: &Vec<i64>, pgm: &Vec<i64>) -> IntCode{
+        IntCode {inputs: inputs.clone(), csr: Some(0), pgm: pgm.clone(), output:vec![], base: 0, initial_memory: pgm.len()}
     }
-    pub fn resolve(inputs: &Vec<i32>, pgm: &Vec<i32>) -> i32 {
+    pub fn resolve(inputs: &Vec<i64>, pgm: &Vec<i64>) -> i64 {
         IntCode::create(inputs, pgm).run()
     }
     fn csr_at(&mut self, new_csr: usize) {
         self.csr = Some(new_csr);
     }
-    fn run(&mut self) -> i32 {
+    fn run(&mut self) -> i64 {
         while self.csr.is_some() {
             self.csr = self.run_single();
         }
         *self.output.last().unwrap_or(&0)
     }
-    pub fn push_input(&mut self, input : i32) {
+    pub fn push_input(&mut self, input : i64) {
         self.inputs.push(input);
     }
-    pub fn next(&mut self) -> Option<i32> { // until next output
+    pub fn next(&mut self) -> Option<i64> { // until next output
         let last_out = self.output.clone();
         while self.csr.is_some() {
             self.csr = self.run_single();
@@ -31,20 +31,18 @@ impl IntCode {
     fn run_single(&mut self) -> Option<usize> {
         let csr = self.csr.unwrap();
         let (op, param_modes) = parse_op(self.pgm[csr] as u32);
-        //let curr_view:Vec<i32> = scope.clone().into_iter().skip(csr).take(min(4, scope.len())).collect();
+        //let curr_view:Vec<i64> = scope.clone().into_iter().skip(csr).take(min(4, scope.len())).collect();
         //println!("{:?}", curr_view);
         let(p1,p2) = self.params(&param_modes);
         if op == 1 { // add
-            let out_csr = self.pgm[csr + 3] as usize;
-            self.pgm[out_csr] = p1? + p2?;
+            self.write_at(3, &param_modes, p1? + p2?);
             Some(csr + 4)
         } else if op == 2 { // mul
-            let out_csr = self.pgm[csr + 3] as usize;
-            self.pgm[out_csr] = p1? * p2?;
+            self.write_at(3, &param_modes, p1? * p2?);
             Some(csr + 4)
         } else if op == 3 { // read_in
-            let out_csr = self.pgm[csr + 1] as usize;
-            self.pgm[out_csr] = self.next_input();
+            let input = self.next_input();
+            self.write_at(1, &param_modes, input);
             Some(csr + 2)
         } else if op == 4 { //write_out
             self.output.push(p1?);
@@ -54,31 +52,67 @@ impl IntCode {
         } else if op == 6 { // jump-if-false
             if p1? == 0 { Some(p2? as usize) } else { Some(csr + 3) }
         } else if op == 7 { // less-than
-            let out_csr = self.pgm[csr + 3] as usize;
-            self.pgm[out_csr] = (p1? < p2?) as i32;
+            self.write_at(3, &param_modes, (p1? < p2?) as i64);
             Some(csr + 4)
         } else if op == 8 { // less-than
-            let out_csr = self.pgm[csr + 3] as usize;
-            self.pgm[out_csr] = (p1? == p2?) as i32;
+            self.write_at(3, &param_modes, (p1? == p2?) as i64);
             Some(csr + 4)
+        } else if op == 9 { // adjust-relative-base
+            self.base += p1?;
+            Some(csr + 2)
         } else if op == 99 {
             None
         } else {
             panic!("Found an unknown opcode");
         }
     }
-    fn next_input(&mut self) -> i32{
+    fn next_input(&mut self) -> i64{
         self.inputs.remove(0)
     }
 
-    fn params(&self,param_modes: &Vec<u32>) -> (Option<i32>, Option<i32>){
+    fn write_at(&mut self, offset: usize, param_modes: &Vec<u32>, val: i64) {
+        let out_csr = self.resolve_param_csr(offset, &param_modes).unwrap() as usize;
+        if self.pgm.len() <= out_csr {
+            self.pgm.resize(out_csr +1, 0)
+        }
+        self.pgm[out_csr] = val;
+    }
+
+    fn params(&self,param_modes: &Vec<u32>) -> (Option<i64>, Option<i64>){
         let csr = self.csr.unwrap();
-        let p1 = self.pgm.get(csr + 1).and_then(|p_imm| resolve_param(param_modes[0],*p_imm,&self.pgm));
-        let p2 = self.pgm.get(csr + 2).and_then(|p_imm| resolve_param(param_modes[1],*p_imm,&self.pgm));
+        let p1 : Option<i64> = self.resolve_param_csr(1,&param_modes)
+            .and_then(|c| Some(self.get_at(c as usize)))
+            .or_else(|| Some(self.get_at(csr+1)));
+        let p2 :Option<i64> = self.resolve_param_csr(2,&param_modes)
+            .and_then(|c| Some(self.get_at(c as usize)))
+            .or_else(|| Some(self.get_at(csr+2)));
+
         (p1,p2)
     }
+    fn get_at(&self, csr: usize) -> i64 {
+        self.pgm.get(csr).cloned().unwrap_or(0)
+    }
+
+    fn resolve_param_csr(&self, offset: usize, param_modes: &Vec<u32>) -> Option<i64> {
+        let csr = self.csr.unwrap();
+        let mode = param_modes[offset -1];
+        let val_at_csr = Some(self.get_at((csr + offset) as usize));
+        if mode == 0 {
+            // get at csr
+            val_at_csr
+        } else if mode == 1 {
+            None // no csr, is immediate (also: outputs should never go to immediate)
+        } else if mode == 2 {
+            // get at base + csr
+            val_at_csr.map(|c| (self.base + c))
+        } else {
+            panic!("ParamMode not defined!")
+        }
+    }
+
+
 }
-fn resolve_param(mode : u32, param: i32, scope: &Vec<i32>) -> Option<i32> {
+fn resolve_param(mode : u32, param: i64, scope: &Vec<i64>) -> Option<i64> {
     if mode == 0 {
         scope.get(param as usize).cloned()
     } else if mode == 1 {
@@ -89,10 +123,12 @@ fn resolve_param(mode : u32, param: i32, scope: &Vec<i32>) -> Option<i32> {
 }
 
 pub struct IntCode {
-    inputs: Vec<i32>,
-    output: Vec<i32>,
+    inputs: Vec<i64>,
+    output: Vec<i64>,
     csr: Option<usize>,
-    pgm: Vec<i32>,
+    pgm: Vec<i64>,
+    base: i64,
+    initial_memory: usize
 }
 
 fn parse_op(input: u32) -> (u32, Vec<u32>) {
@@ -101,8 +137,6 @@ fn parse_op(input: u32) -> (u32, Vec<u32>) {
     let param_modes = s[0..=2].chars().rev().map(|x| x.to_digit(10).unwrap()).collect();
     (op, param_modes)
 }
-
-
 
 
 #[cfg(test)]
@@ -170,7 +204,7 @@ mod test {
     }
 
     #[test]
-    fn test_pgm_pt2() {
+    fn test_pgm_pt2_day5() {
         assert_eq!(IntCode::resolve(&vec![8], &vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]), 1); // is eq 8
         // lt 8
         let lt8_position_mode = vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
@@ -228,4 +262,35 @@ mod test {
         assert_eq!(IntCode::resolve(&vec![10], &large_pgm), 1001);
         assert_eq!(IntCode::resolve(&vec![11], &large_pgm), 1001);
     }
+
+    #[test]
+    fn test_access_outside_intial_memory_day9() {
+        let mut toTest = IntCode::create(&vec![1], &vec![1,5,6,0,99]);
+        toTest.csr = toTest.run_single();
+        assert_eq!(toTest.pgm, vec![1,5,6,0,99]);
+
+        toTest = IntCode::create(&vec![1], &vec![1,6,7,0,99]);
+        toTest.csr = toTest.run_single();
+        assert_eq!(toTest.pgm, vec![3,6,7,0,99]);
+
+        toTest = IntCode::create(&vec![1], &vec![1,7,8,0,99]);
+        toTest.csr = toTest.run_single();
+        assert_eq!(toTest.pgm, vec![5,7,8,0,99]);
+    }
+
+    #[test]
+    fn test_read_write_outside_initial_memory() {
+        let mut toTest = IntCode::create(&vec![], &vec![109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99]);
+        toTest.run();
+        assert_eq!(toTest.output, vec![109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99]);
+
+        toTest = IntCode::create(&vec![], &vec![1102,34915192,34915192,7,4,7,99,0]);
+        toTest.run();
+        assert_eq!(toTest.output, vec![1219070632396864]);
+
+        toTest = IntCode::create(&vec![], &vec![104,1125899906842624,99]);
+        toTest.run();
+        assert_eq!(toTest.output, vec![1125899906842624]);
+    }
+
 }
