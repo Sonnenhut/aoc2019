@@ -265,7 +265,7 @@ mod test {
     fn test_access_outside_intial_memory_day9() {
         let mut toTest = IntCode::create(&vec![1], &vec![1,5,6,0,99]);
         toTest.csr = toTest.run_single();
-        assert_eq!(toTest.pgm, vec![1,5,6,0,99]);
+        assert_eq!(toTest.pgm, vec![0,5,6,0,99]);
 
         toTest = IntCode::create(&vec![1], &vec![1,6,7,0,99]);
         toTest.csr = toTest.run_single();
