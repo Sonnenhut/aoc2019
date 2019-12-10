@@ -16,6 +16,8 @@ Attempt to solve aoc2019 in rust.
 
 [f64.to_radians](https://doc.rust-lang.org/std/primitive.f64.html#method.to_radians)
 
+[atan2 to find an angle for a given point (day10)](https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors/21484228)
+
 ---
 ###### Ownership
 
