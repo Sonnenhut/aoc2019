@@ -5,7 +5,16 @@ Attempt to solve aoc2019 in rust.
 
 ##### Learned stuff
 [Iterator.step_by](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.step_by)
+
+[Iterator.windows](https://doc.rust-lang.org/std/primitive.slice.html#method.windows)
+
 [successors](https://doc.rust-lang.org/std/iter/fn.successors.html)
+
+[frickin' comparing floats to one another](https://github.com/rust-lang/rust/blob/88fc543866c2c48b3b1a32e9d55a4eb77d1dee66/src/test/run-pass/const-binops.rs#L12-L19)
+
+[radian (I am stupid)](https://en.wikipedia.org/wiki/Radian)
+
+[f64.to_radians](https://doc.rust-lang.org/std/primitive.f64.html#method.to_radians)
 
 ---
 ###### Ownership
