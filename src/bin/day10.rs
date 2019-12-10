@@ -1,8 +1,5 @@
 use aoc2019::read_lines;
-use aoc2019::intcode::IntCode;
-use std::collections::HashSet;
 use std::iter::successors;
-use std::pin::Pin;
 use std::cmp::Ordering::Equal;
 
 fn main() {
@@ -13,7 +10,7 @@ fn main() {
 
 fn pt1(asteroids: &Vec<Point>) -> (Point, usize) {
     asteroids.iter()
-        .map(|p| (p.clone(), cnt_in_sight(p,asteroids)))
+        .map(|p| (*p, cnt_in_sight(p,asteroids)))
         .max_by(|a,b| a.1.cmp(&b.1))
         .unwrap()
 }
@@ -25,13 +22,13 @@ fn pt2(asteroids: &Vec<Point>) -> isize {
 
 fn in_kill_order(asteroids: &Vec<Point>) -> Vec<Point> {
     let lazer = pt1(&asteroids).0;
-    let mut remainder : Vec<Point> = asteroids.iter().cloned().filter(|other| *other != lazer).collect();
+    let mut remainder : Vec<Point> = asteroids.to_vec();
     let mut res : Vec<Point> = vec![];
 
     loop {
         let removed : Vec<Point> = one_360(&lazer, &remainder);
         remainder = remainder.iter().filter(|other| !removed.contains(other)).cloned().collect();
-        res = res.iter().cloned().chain(removed.iter().cloned()).collect();
+        res = [res, removed.to_vec()].concat();
         if removed.len() == 0 {
             break;
         }
@@ -40,43 +37,32 @@ fn in_kill_order(asteroids: &Vec<Point>) -> Vec<Point> {
 }
 
 fn one_360(lazer: &Point, asteroids: &Vec<Point>) -> Vec<Point> {
-    let res : Vec<Point> = vec![];
-    let mut remainder : Vec<Point> = asteroids.iter().cloned().filter(|other| other != lazer).collect();
-    remainder.sort_by(|a,b| lazer.degrees_360(a).partial_cmp(&lazer.degrees_360(b)).unwrap() // first by degrees
+    let cmp_deg = |a,b| lazer.degrees_360(&a).partial_cmp(&lazer.degrees_360(&b)).unwrap();
+    let mut remainder : Vec<Point> = asteroids.iter().cloned().filter(|other| *other != *lazer).collect();
+    remainder.sort_by(|a,b| cmp_deg(*a,*b) // first by degrees
         .then_with(|| lazer.distance(a).partial_cmp(&lazer.distance(b)).unwrap()) // then by distance
     );
 
-    let mut removed : Vec<Point> = vec![];
-    let mut skipped: Vec<Point> = vec![];
+    let mut res: Vec<Point> = vec![];
     while remainder.len() > 0 {
-        let next = remainder.remove(0);
-        removed.push(next.clone());
-
-        let ignore: Vec<Point> = remainder.iter()
-            .filter(|other| **other != next)
-            .filter(|other| {
-            // ignore the ones on the same degree (lazer will proceed rotating immediately)
-            lazer.degrees_360(&next).partial_cmp(&lazer.degrees_360(other)).unwrap() == Equal
-        }).cloned().collect();
-        remainder = remainder.iter().filter(|other| !ignore.contains(other)).cloned().collect();
-        skipped = [skipped, ignore].concat();
+        let next : Vec<Point> = successors(Some(remainder.remove(0)), |last| {
+            if remainder.get(0).filter(|&succ| cmp_deg(*last, *succ) == Equal).is_some() {
+                Some(remainder.remove(0))
+            } else {None}
+        }).collect(); // block of next values
+        res.push(next[0]);
     }
-    removed
+    res
 }
 
 fn cnt_in_sight(loc: &Point, asteroids: &Vec<Point>) -> usize {
-    // count the ones that are obstructed by another
-    let not_in_sight : HashSet<Point> = asteroids.iter()
-        .flat_map(|line_end| {
-            let res = asteroids.iter()
-                .filter(|other| *other != line_end && *other != loc)
-                .filter(|maybe_between| maybe_between.on_line(loc, line_end))
-                .cloned()
-                .collect::<HashSet<Point>>();
-            res
-        })
+    let mut in_sight : Vec<f64> = asteroids.iter()
+        .filter(|other| *other != loc)
+        .map(|other| loc.degrees_360(other))
         .collect();
-    asteroids.len() - not_in_sight.len() - 1
+    in_sight.sort_by(|a,b|a.partial_cmp(b).unwrap());
+    in_sight.dedup_by(|a,b|a.partial_cmp(&b).unwrap() == Equal);
+    in_sight.len()
 }
 
 fn parse_asteroids(s: &String) -> Vec<Point>{
@@ -102,14 +88,6 @@ impl Point {
         let res = ((self.x - other.x).pow(2) as f64 + (self.y - other.y).pow(2) as f64).sqrt();
         res
     }
-    fn on_line(&self, line_start: &Point, line_end: &Point) -> bool {
-        let d1 = line_start.distance(self);
-        let d2 = line_end.distance(self);
-        let d3 = line_start.distance(line_end);
-
-        let res = approx_eq((d1 + d2), d3, 0.0000001);
-        res
-    }
     fn degrees_360(&self, other: &Point) -> f64 {
         let x_relate_to_self = other.x as f64 - self.x as f64;
         let y_relate_to_self = other.y as f64 - self.y as f64;
@@ -120,18 +98,10 @@ impl Point {
     }
 }
 
-fn approx_eq(a: f64, b: f64, delta: f64) -> bool{
-    (a-b).abs() < delta
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[test]
-    fn test_on_line() { // is on line segment (not on the whole line)
-        assert_eq!(Point::new(2,2).on_line(&Point::new(3,4), &Point::new(1,0)), true);
-    }
     #[test]
     fn parse_test() {
 let ex =
