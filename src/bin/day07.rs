@@ -6,24 +6,24 @@ use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
 
 fn main() {
-    let nums: Vec<i64> = read_lines(7)[0].split(',').map(|s| s.parse().unwrap()).collect();
-    println!("pt1: {}", max_thruster_out(&nums)); // 262086
-    println!("pt2: {}", max_feedback_loop(&nums)); // 5371621
+    let mem: Vec<i64> = read_lines(7)[0].split(',').map(|s| s.parse().unwrap()).collect();
+    println!("pt1: {}", max_thruster_out(&mem)); // 262086
+    println!("pt2: {}", max_feedback_loop(&mem)); // 5371621
 }
 
-fn max_feedback_loop(pgm: &Vec<i64>) -> i64 {
+fn max_feedback_loop(mem: &Vec<i64>) -> i64 {
     sequences(5..=9).iter()
-        .map(|seq| feedback_loop(&seq, &pgm))
+        .map(|seq| feedback_loop(&seq, &mem))
         .max().unwrap()
 }
 
-fn feedback_loop(seq: &Vec<u64>, pgm: &Vec<i64>) -> i64 {
-    let mut programs : Vec<IntCode> = seq.iter().map(|phase_instr| IntCode::create(&vec![*phase_instr as i64], &pgm)).collect();
+fn feedback_loop(seq: &Vec<u64>, mem: &Vec<i64>) -> i64 {
+    let mut programs : Vec<IntCode> = seq.iter().map(|phase_instr| IntCode::create(&vec![*phase_instr as i64], &mem)).collect();
     let mut last_out = Some(0);
     loop {
-        for pgm in programs.iter_mut() {
-            pgm.push_input(last_out.unwrap() as i64);
-            let out = pgm.next();
+        for mem in programs.iter_mut() {
+            mem.push_input(last_out.unwrap() as i64);
+            let out = mem.next();
             if out.is_none() {
                 return last_out.unwrap();
             } else {
@@ -33,19 +33,19 @@ fn feedback_loop(seq: &Vec<u64>, pgm: &Vec<i64>) -> i64 {
     }
 }
 
-fn max_thruster_out(pgm: &Vec<i64>) -> i64 {
+fn max_thruster_out(mem: &Vec<i64>) -> i64 {
     sequences(0..=4).iter()
-        .map(|seq| thruster_out(&seq, &pgm))
+        .map(|seq| thruster_out(&seq, &mem))
         .max().unwrap()
 }
 
-fn thruster_out(seq: &Vec<u64>, pgm: &Vec<i64>) -> i64 {
+fn thruster_out(seq: &Vec<u64>, mem: &Vec<i64>) -> i64 {
     let mut remaining_seq = seq.clone();
     successors(Some(0), |last| {
         if remaining_seq.is_empty() {
             None
         } else {
-            let out = IntCode::resolve(&vec![remaining_seq.remove(0) as i64, *last as i64], &pgm);
+            let out = IntCode::resolve(&vec![remaining_seq.remove(0) as i64, *last as i64], &mem);
             Some(out)
         }
     }).max().unwrap()

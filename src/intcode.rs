@@ -1,18 +1,21 @@
 impl IntCode {
-    pub fn create(inputs: &Vec<i64>, pgm: &Vec<i64>) -> IntCode{
-        IntCode {inputs: inputs.clone(), csr: Some(0), pgm: pgm.clone(), output:vec![], base: 0}
+    pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode{
+        IntCode {inputs: inputs.clone(), csr: Some(0), mem: mem.clone(), output:vec![], base: 0}
     }
-    pub fn resolve(inputs: &Vec<i64>, pgm: &Vec<i64>) -> i64 {
-        IntCode::create(inputs, pgm).run()
+    pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
+        IntCode::create(inputs, mem).run()
     }
-    fn run(&mut self) -> i64 {
+    pub fn run(&mut self) -> i64 {
         while self.csr.is_some() {
             self.csr = self.run_single();
         }
-        *self.output.last().unwrap_or(&0)
+        *self.output.last().unwrap_or(&-1)
     }
     pub fn push_input(&mut self, input : i64) {
         self.inputs.push(input);
+    }
+    pub fn memory(&self) -> Vec<i64>{
+        self.mem.to_vec()
     }
     pub fn next(&mut self) -> Option<i64> { // until next output
         let last_out = self.output.clone();
@@ -27,7 +30,7 @@ impl IntCode {
     }
     fn run_single(&mut self) -> Option<usize> {
         let csr = self.csr.unwrap();
-        let (op, param_modes) = parse_op(self.pgm[csr] as u32);
+        let (op, param_modes) = parse_op(self.mem[csr] as u32);
 
         let(p1,p2) = self.params(&param_modes);
         match op {
@@ -59,10 +62,10 @@ impl IntCode {
 
     fn write_at(&mut self, offset: usize, param_modes: &Vec<u32>, val: i64) -> Option<usize> {
         let out_csr = self.resolve_param_csr(offset, &param_modes).unwrap() as usize;
-        if self.pgm.len() <= out_csr {
-            self.pgm.resize(out_csr +1, 0)
+        if self.mem.len() <= out_csr {
+            self.mem.resize(out_csr +1, 0)
         }
-        self.pgm[out_csr] = val;
+        self.mem[out_csr] = val;
         Some(self.csr.unwrap() + offset + 1) // new cursor after writing
     }
 
@@ -78,7 +81,7 @@ impl IntCode {
         (p1,p2)
     }
     fn get_at(&self, csr: usize) -> i64 {
-        self.pgm.get(csr).cloned().unwrap_or(0)
+        self.mem.get(csr).cloned().unwrap_or(0)
     }
 
     fn resolve_param_csr(&self, offset: usize, param_modes: &Vec<u32>) -> Option<i64> {
@@ -103,7 +106,7 @@ pub struct IntCode {
     inputs: Vec<i64>,
     output: Vec<i64>,
     csr: Option<usize>,
-    pgm: Vec<i64>,
+    mem: Vec<i64>,
     base: i64,
 }
 
@@ -130,54 +133,54 @@ mod test {
         let mut to_test = IntCode::create(&vec![0], &vec![1, 0, 0, 0, 99]);
         to_test.csr = to_test.run_single();
         assert_eq!(to_test.csr, Some(4));
-        assert_eq!(to_test.pgm, vec![2, 0, 0, 0, 99]);
+        assert_eq!(to_test.mem, vec![2, 0, 0, 0, 99]);
         to_test.csr = Some(0);
         to_test.csr = to_test.run_single();
         assert_eq!(to_test.csr, Some(4));
-        assert_eq!(to_test.pgm, vec![4, 0, 0, 0, 99]);
+        assert_eq!(to_test.mem, vec![4, 0, 0, 0, 99]);
 
         to_test = IntCode::create(&vec![0], &vec![1002, 4, 3, 4, 33]);
         to_test.csr = to_test.run_single();
         assert_eq!(to_test.csr, Some(4));
-        assert_eq!(to_test.pgm, vec![1002, 4, 3, 4, 99]);
+        assert_eq!(to_test.mem, vec![1002, 4, 3, 4, 99]);
 
         to_test = IntCode::create(&vec![0], &vec![1101, 100, -1, 4, 0]);
         to_test.csr = to_test.run_single();
         assert_eq!(to_test.csr, Some(4));
-        assert_eq!(to_test.pgm, vec![1101, 100, -1, 4, 99]);
+        assert_eq!(to_test.mem, vec![1101, 100, -1, 4, 99]);
     }
 
     #[test]
     fn test_int_code() {
         let mut to_test = IntCode::create(&vec![0], &vec![1101, 100, -1, 4, 0]);
         to_test.run();
-        assert_eq!(to_test.pgm, vec![1101, 100, -1, 4, 99]);
+        assert_eq!(to_test.mem, vec![1101, 100, -1, 4, 99]);
 
         to_test = IntCode::create(&vec![0], &vec![1, 1, 1, 4, 99, 5, 6, 0, 99]);
         to_test.run();
-        assert_eq!(to_test.pgm, vec![30, 1, 1, 4, 2, 5, 6, 0, 99]);
+        assert_eq!(to_test.mem, vec![30, 1, 1, 4, 2, 5, 6, 0, 99]);
 
 
         to_test = IntCode::create(&vec![0], &vec![2, 4, 4, 5, 99, 0]);
         to_test.run();
-        assert_eq!(to_test.pgm, vec![2, 4, 4, 5, 99, 9801]);
+        assert_eq!(to_test.mem, vec![2, 4, 4, 5, 99, 9801]);
     }
 
     #[test]
     fn fix_nonzero_code() {
         let mut to_test = IntCode::create(&vec![1], &vec![3, 15, 1, 15, 6, 6, 1100, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/0]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![3, 15, 1, 15, 6, 6, 1100, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
+        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1100, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
+        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
+        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
+        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
     }
 
     #[test]
-    fn test_pgm_pt2_day5() {
+    fn test_mem_pt2_day5() {
         assert_eq!(IntCode::resolve(&vec![8], &vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]), 1); // is eq 8
         // lt 8
         let lt8_position_mode = vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
@@ -223,32 +226,32 @@ mod test {
         assert_eq!(IntCode::resolve(&vec![-1], &non_zero_immediate_mode), 1);
         assert_eq!(IntCode::resolve(&vec![0], &non_zero_immediate_mode), 0);
 
-        //larger pgm
-        let large_pgm = vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+        //larger mem
+        let large_mem = vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
                              1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
                              999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
-        assert_eq!(IntCode::resolve(&vec![6], &large_pgm), 999); // below 8
-        assert_eq!(IntCode::resolve(&vec![6], &large_pgm), 999);
-        assert_eq!(IntCode::resolve(&vec![7], &large_pgm), 999);
-        assert_eq!(IntCode::resolve(&vec![8], &large_pgm), 1000); // is 8
-        assert_eq!(IntCode::resolve(&vec![9], &large_pgm), 1001);
-        assert_eq!(IntCode::resolve(&vec![10], &large_pgm), 1001);
-        assert_eq!(IntCode::resolve(&vec![11], &large_pgm), 1001);
+        assert_eq!(IntCode::resolve(&vec![6], &large_mem), 999); // below 8
+        assert_eq!(IntCode::resolve(&vec![6], &large_mem), 999);
+        assert_eq!(IntCode::resolve(&vec![7], &large_mem), 999);
+        assert_eq!(IntCode::resolve(&vec![8], &large_mem), 1000); // is 8
+        assert_eq!(IntCode::resolve(&vec![9], &large_mem), 1001);
+        assert_eq!(IntCode::resolve(&vec![10], &large_mem), 1001);
+        assert_eq!(IntCode::resolve(&vec![11], &large_mem), 1001);
     }
 
     #[test]
     fn test_access_outside_intial_memory_day9() {
         let mut to_test = IntCode::create(&vec![1], &vec![1, 5, 6, 0, 99]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![0, 5, 6, 0, 99]);
+        assert_eq!(to_test.mem, vec![0, 5, 6, 0, 99]);
 
         to_test = IntCode::create(&vec![1], &vec![1, 6, 7, 0, 99]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![0, 6, 7, 0, 99]);
+        assert_eq!(to_test.mem, vec![0, 6, 7, 0, 99]);
 
         to_test = IntCode::create(&vec![1], &vec![1, 7, 8, 0, 99]);
         to_test.csr = to_test.run_single();
-        assert_eq!(to_test.pgm, vec![0, 7, 8, 0, 99]);
+        assert_eq!(to_test.mem, vec![0, 7, 8, 0, 99]);
     }
 
     #[test]

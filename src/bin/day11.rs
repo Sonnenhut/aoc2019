@@ -4,14 +4,14 @@ use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
 
 fn main() {
-    let nums: Vec<i64> = read_lines(11)[0].split(',').map(|s| s.parse().unwrap()).collect();
-    println!("pt1: {}", pt1(&nums,0).len()); // 2539
+    let mem: Vec<i64> = read_lines(11)[0].split(',').map(|s| s.parse().unwrap()).collect();
+    println!("pt1: {}", pt1(&mem,0).len()); // 2539
     println!("pt2: ", ); // ZLEBKJRA
-    pt2(&nums);
+    pt2(&mem);
 }
 
-fn pt1(nums: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
-    let mut int_code = IntCode::create(&vec![], &nums);
+fn pt1(mem: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
+    let mut int_code = IntCode::create(&vec![], &mem);
     let mut colors : HashMap<(i64,i64), i64> = HashMap::new();
     let mut loc : (i64,i64,char) = (0,0,'^');
 
@@ -33,8 +33,8 @@ fn pt1(nums: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
     colors
 }
 
-fn pt2(nums: &Vec<i64>) {
-    let colors = pt1(&nums,1);
+fn pt2(mem: &Vec<i64>) {
+    let colors = pt1(&mem,1);
     let min_x = *colors.iter().map(|((x,_), _)| x).min().unwrap_or(&0);
     let max_x = *colors.iter().map(|((x,_), _)| x).max().unwrap_or(&0);
     let min_y = *colors.iter().map(|((_,y), _)| y).min().unwrap_or(&0);
@@ -80,7 +80,7 @@ mod test {
 
     #[test]
     fn test_ex() {
-        let ex_pgm = vec![1,0,0,0,1,0,1,0,0,1,1,0,1,0,99].iter()
+        let ex_mem = vec![1,0,0,0,1,0,1,0,0,1,1,0,1,0,99].iter()
             .flat_map(|n| if *n == 1 {vec![1104,1]} else if *n == 0 {vec![1104,0]} else {vec![99]})
             .collect();
 
@@ -92,7 +92,7 @@ mod test {
         expected.insert((1,0),1);
         expected.insert((1,1),1);
 
-        assert_eq!(pt1(&ex_pgm,0), expected);
-        assert_eq!(pt1(&ex_pgm,0).len(), 6);
+        assert_eq!(pt1(&ex_mem,0), expected);
+        assert_eq!(pt1(&ex_mem,0).len(), 6);
     }
 }
