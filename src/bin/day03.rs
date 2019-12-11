@@ -19,13 +19,13 @@ fn pt1(wire_definitions: &Vec<Vec<String>>) -> u32 {
 
 fn pt2(wire_definitions: &Vec<Vec<String>>) -> u32 {
     let wires : Vec<Vec<Point>> = wire_definitions.iter().map(|wire| path(wire)).collect();
-    let all_points : Vec<Point> = wires.clone().into_iter().flat_map(|wire| wire).collect();
-    duplicates(&all_points).iter().filter_map(|p| {
+    let wires_without_dupes : Vec<Point> = wires.iter().cloned().flat_map(|wire| unique(&wire)).collect();
+    duplicates(&wires_without_dupes).iter().filter_map(|p| {
         let lengths : Vec<u32> = wires.iter()
-                                        .map(|wire| wire.iter().position(|other|*other == *p).unwrap_or_default() as u32)
-                                        .collect();
-        if lengths.contains(&0) {None} else {Some(lengths.iter().sum())} // ignore where the point is tripping over itself
-    }).min().unwrap_or_default()
+            .filter_map(|wire| wire.iter().position(|other|*other == *p).map(|u| u as u32))
+            .collect();
+        if lengths.len() == wires.len() {Some(lengths.iter().sum()) } else{None} // ignore where the point is tripping over itself
+    }).min().unwrap()
 }
 
 fn path(wire: &Vec<String>) -> Vec<Point> {
@@ -37,6 +37,11 @@ fn path(wire: &Vec<String>) -> Vec<Point> {
     }).collect();
     res.insert(0, csr);
     res
+}
+
+fn unique(v: &Vec<Point>) -> Vec<Point> {
+    let hash_set : HashSet<Point> = v.iter().cloned().collect();
+    hash_set.iter().cloned().collect()
 }
 
 fn duplicates(v: &Vec<Point>) -> Vec<Point> {
