@@ -1,22 +1,21 @@
-use aoc2019::read_lines;
-use std::iter::successors;
-use std::cmp::Ordering::Equal;
-use aoc2019::intcode::IntCode;
 use std::collections::HashMap;
-use std::hash::Hash;
+
+use aoc2019::intcode::IntCode;
+use aoc2019::read_lines;
 
 fn main() {
     let nums: Vec<i64> = read_lines(11)[0].split(',').map(|s| s.parse().unwrap()).collect();
-    println!("pt1: {}", pt1(&nums).len()); // 2539
-    //println!("pt2: {}", pt2(&input)); //
+    println!("pt1: {}", pt1(&nums,0).len()); // 2539
+    println!("pt2: ", ); // ZLEBKJRA
+    pt2(&nums);
 }
 
-fn pt1(nums: &Vec<i64>) -> HashMap<(i64,i64),i64> {
+fn pt1(nums: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
     let mut int_code = IntCode::create(&vec![], &nums);
     let mut colors : HashMap<(i64,i64), i64> = HashMap::new();
     let mut loc : (i64,i64,char) = (0,0,'^');
 
-    let mut optional = Some(0_i64);
+    let mut optional = Some(start_panel);
     while let Some(panel_color) = optional {
         int_code.push_input(panel_color as i64);
         let new_color = int_code.next();
@@ -34,6 +33,20 @@ fn pt1(nums: &Vec<i64>) -> HashMap<(i64,i64),i64> {
     colors
 }
 
+fn pt2(nums: &Vec<i64>) {
+    let colors = pt1(&nums,1);
+    for y in (-5..2).rev() {
+        for x  in 0..40 {
+            match colors.get(&(x as i64,y as i64)).or(Some(&0_i64)).unwrap() {
+                1 => print!("█"),
+                0 => print!(" "),
+                _ => {}
+            }
+        }
+        print!("\n");
+    }
+}
+
 fn mod_loc(loc : &(i64,i64,char), modifier: i64) -> (i64,i64,char) {
     match loc.2 {
         '^' => if modifier == 0 { (loc.0 - 1, loc.1,'<')} else {(loc.0 + 1, loc.1,'>')},
@@ -47,8 +60,9 @@ fn mod_loc(loc : &(i64,i64,char), modifier: i64) -> (i64,i64,char) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::process::exit;
+
+    use super::*;
 
     #[test]
     fn test_mod_loc() {
@@ -68,7 +82,7 @@ mod test {
             .flat_map(|n| if *n == 1 {vec![1104,1]} else if *n == 0 {vec![1104,0]} else {vec![99]})
             .collect();
 
-        let mut expected =HashMap::new();
+        let mut expected = HashMap::new();
         expected.insert((0,0),0);
         expected.insert((-1,0),0);
         expected.insert((-1,-1),1);
@@ -76,7 +90,7 @@ mod test {
         expected.insert((1,0),1);
         expected.insert((1,1),1);
 
-        assert_eq!(pt1(&ex_pgm), expected);
-        assert_eq!(pt1(&ex_pgm).len(), 6);
+        assert_eq!(pt1(&ex_pgm,0), expected);
+        assert_eq!(pt1(&ex_pgm,0).len(), 6);
     }
 }
