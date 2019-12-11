@@ -18,6 +18,10 @@ Attempt to solve aoc2019 in rust.
 
 [atan2 to find an angle for a given point (day10)](https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors/21484228)
 
+[while let](https://doc.rust-lang.org/rust-by-example/flow_control/while_let.html)
+
+[match](https://doc.rust-lang.org/rust-by-example/flow_control/match.html)
+
 ---
 ###### Ownership
 
