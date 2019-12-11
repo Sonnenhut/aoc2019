@@ -35,8 +35,12 @@ fn pt1(nums: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
 
 fn pt2(nums: &Vec<i64>) {
     let colors = pt1(&nums,1);
-    for y in (-5..2).rev() {
-        for x  in 0..40 {
+    let min_x = *colors.iter().map(|((x,_), _)| x).min().unwrap_or(&0);
+    let max_x = *colors.iter().map(|((x,_), _)| x).max().unwrap_or(&0);
+    let min_y = *colors.iter().map(|((_,y), _)| y).min().unwrap_or(&0);
+    let max_y = *colors.iter().map(|((_,y), _)| y).max().unwrap_or(&0);
+    for y in (min_y..=max_y).rev() {
+        for x  in min_x..max_x {
             match colors.get(&(x as i64,y as i64)).or(Some(&0_i64)).unwrap() {
                 1 => print!("█"),
                 0 => print!(" "),
