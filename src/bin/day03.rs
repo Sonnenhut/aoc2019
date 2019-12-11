@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use aoc2019::read_lines;
+use std::time::Instant;
 
 fn main() {
     let nums: Vec<Vec<String>> = read_lines(3).into_iter().map(|l| parse_wire(&l)).collect();
@@ -9,10 +10,8 @@ fn main() {
 }
 fn pt1(wire_definitions: &Vec<Vec<String>>) -> u32 {
     let all_points : Vec<Point> = wire_definitions.iter().flat_map(|wire| {
-        let mut p = path(wire);
-        p.sort();
-        p.dedup();
-        p
+        let p = path(wire);
+        unique(&p)
     }).collect();
     duplicates(&all_points).iter().map(|p| p.distance_to_center()).min().unwrap_or_default()
 }
@@ -40,15 +39,17 @@ fn path(wire: &Vec<String>) -> Vec<Point> {
 }
 
 fn unique(v: &Vec<Point>) -> Vec<Point> {
-    let hash_set : HashSet<Point> = v.iter().cloned().collect();
-    hash_set.iter().cloned().collect()
+    let mut res = v.to_vec();
+    res.sort();
+    res.dedup();
+    res
 }
 
 fn duplicates(v: &Vec<Point>) -> Vec<Point> {
     let mut unique = HashSet::new();
-    v.into_iter()
-        .filter(|x| !unique.insert(x.clone()))
-        .cloned()
+    unique.reserve(v.len()); // this halves the runtime!
+    v.iter().cloned()
+        .filter(|x| !unique.insert(*x))
         .collect()
 }
 
@@ -63,23 +64,17 @@ impl Point {
         Point {x: 0,y: 0}
     }
     fn in_direction(&self, other: &str) -> Vec<Point> {
-        if other.len() >= 2 {
-            let dir = other.chars().nth(0).unwrap();
-            let amount  = other[1..].parse().unwrap();
-            return (1..=amount).filter_map(|n|
-                if dir == 'U' {
-                    Some(Point {y: self.y + n, ..*self})
-                } else if dir == 'D' {
-                    Some(Point {y: self.y - n, ..*self})
-                } else if dir == 'L' {
-                    Some(Point {x: self.x - n, ..*self})
-                } else if dir == 'R' {
-                    Some(Point {x: self.x + n, ..*self})
-                } else {
-                    None
-                }).collect();
-        }
-        vec![self.clone()]
+        let dir = other.chars().next().unwrap();
+        let amount  = other[1..].parse().unwrap();
+        (1..=amount).map(|n|
+            match dir {
+                'U' => Point {y: self.y + n, ..*self},
+                'D' => Point {y: self.y - n, ..*self},
+                'L' => Point {x: self.x - n, ..*self},
+                'R' => Point {x: self.x + n, ..*self},
+                _ => panic!("No valid direction given")
+            }
+        ).collect()
     }
     fn distance(&self, other: &Point) -> u32{
         ((self.x - other.x).abs() + (self.y - other.y).abs()) as u32

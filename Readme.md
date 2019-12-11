@@ -26,6 +26,8 @@ Attempt to solve aoc2019 in rust.
 
 [permutations of a sequence (language agnostic)](https://rosettacode.org/wiki/Permutations#Iterative)
 
+[measure time (for benchmarking functions)](https://rust-lang-nursery.github.io/rust-cookbook/datetime/duration.html)
+
 ---
 ###### Ownership
 
