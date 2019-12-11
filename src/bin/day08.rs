@@ -5,8 +5,7 @@ fn main() {
     let layers: Vec<Vec<String>> = split_layers(25,6,read_lines(8)[0].clone());
     println!("pt1: {}", checksum(&layers)); // 1820
     println!("pt2: {}", merge(&layers).join("")); // ZUKCJ
-    merge(&layers)
-        .iter()
+    merge(&layers).iter()
         .map(|s| s.replace("0"," "))
         .map(|s| s.replace("1","█"))
         .inspect(|row| println!("{:?}", row)).collect::<Vec<String>>().join("");
@@ -32,35 +31,14 @@ fn merge_row(above: &str, below: &str) -> String {
 }
 
 fn checksum(layers: &Vec<Vec<String>>) -> usize {
-    let zcnt_layers: Vec<(usize, Vec<String>)> = layers
-        .iter()
-        .map(|layer| {
-            let zcnt = layer.iter().map(|row| cnt('0', row)).sum::<usize>();
-            (zcnt, layer.clone())
-        })
-        .collect();
-    let min0cnt = zcnt_layers.iter().map(|tuple| tuple.0).min().unwrap();
-    let layer = zcnt_layers.iter()
-        .filter(|tuple| tuple.0 == min0cnt)
-        .map(|tuple| tuple.1.clone())
-        .next()
-        .unwrap();
-    let onecnt :usize = layer
-        .iter()
-        .map(|row| cnt('1', row))
-        .sum();
-    let twocnt:usize = layer
-        .iter()
-        .map(|row| cnt('2', row))
-        .sum();
-    onecnt * twocnt
+    let (_,layer) = layers.iter()
+        .map(|layer| (cnt_all('0',&layer), layer.clone()))
+        .min_by(|a, b|a.0.cmp(&b.0)).unwrap();
+    cnt_all('1', &layer) * cnt_all('2', &layer)
 }
 
-fn cnt(search: char, s: &String) -> usize {
-    let res= s.chars()
-        .filter(|c| *c == search)
-        .count();
-    res
+fn cnt_all(search: char, layer: &Vec<String>) -> usize {
+    layer.iter().map(|row| row.chars().filter(|c| *c == search).count()).sum()
 }
 
 fn split_layers(w: usize, h: usize, image: String) -> Vec<Vec<String>> {

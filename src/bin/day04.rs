@@ -24,7 +24,7 @@ fn valid_pw_2(p: u32) -> bool {
         && nums.windows(2).all(|win| win[0] <= win[1])
 }
 
-fn contains_two_adjacent(nums: &Vec<u32>) -> bool { // contains two adjacent
+fn contains_two_adjacent(nums: &Vec<u32>) -> bool { // contains exactly two adjacent (at least one time)
     let adjacents : Vec<Vec<u32>> = nums.windows(2).filter(|win| win[0] == win[1])
                                         .map(|win| win.to_vec())
                                         .collect();

@@ -1,6 +1,7 @@
 use aoc2019::read_lines;
 use std::iter::successors;
 use std::cmp::Ordering::Equal;
+use std::collections::HashSet;
 
 fn main() {
     let input = parse_asteroids(&read_lines(10).join("\n"));
@@ -22,47 +23,31 @@ fn pt2(asteroids: &Vec<Point>) -> isize {
 
 fn in_kill_order(asteroids: &Vec<Point>) -> Vec<Point> {
     let lazer = pt1(&asteroids).0;
-    let mut remainder : Vec<Point> = asteroids.to_vec();
-    let mut res : Vec<Point> = vec![];
 
-    loop {
-        let removed : Vec<Point> = one_360(&lazer, &remainder);
-        remainder = remainder.iter().filter(|other| !removed.contains(other)).cloned().collect();
-        res = [res, removed.to_vec()].concat();
-        if removed.len() == 0 {
-            break;
-        }
-    }
-    res
-}
-
-fn one_360(lazer: &Point, asteroids: &Vec<Point>) -> Vec<Point> {
     let cmp_deg = |a,b| lazer.degrees_360(&a).partial_cmp(&lazer.degrees_360(&b)).unwrap();
-    let mut remainder : Vec<Point> = asteroids.iter().cloned().filter(|other| *other != *lazer).collect();
+    let mut remainder : Vec<Point> = asteroids.iter().cloned().filter(|other| *other != lazer).collect();
     remainder.sort_by(|a,b| cmp_deg(*a,*b) // first by degrees
         .then_with(|| lazer.distance(a).partial_cmp(&lazer.distance(b)).unwrap()) // then by distance
     );
 
     let mut res: Vec<Point> = vec![];
     while remainder.len() > 0 {
-        let next : Vec<Point> = successors(Some(remainder.remove(0)), |last| {
+        let mut next : Vec<Point> = successors(Some(remainder.remove(0)), |last| {
             if remainder.get(0).filter(|&succ| cmp_deg(*last, *succ) == Equal).is_some() {
-                Some(remainder.remove(0))
-            } else {None}
+                Some(remainder.remove(0)) // take all of same degree
+            } else { None }
         }).collect(); // block of next values
-        res.push(next[0]);
+        res.push(next.remove(0));
+        remainder.append(&mut next); // look at elements on same line later on
     }
     res
 }
 
 fn cnt_in_sight(loc: &Point, asteroids: &Vec<Point>) -> usize {
-    let mut in_sight : Vec<f64> = asteroids.iter()
+    asteroids.iter()
         .filter(|other| *other != loc)
-        .map(|other| loc.degrees_360(other))
-        .collect();
-    in_sight.sort_by(|a,b|a.partial_cmp(b).unwrap());
-    in_sight.dedup_by(|a,b|a.partial_cmp(&b).unwrap() == Equal);
-    in_sight.len()
+        .map(|other| (loc.degrees_360(other) * 10.0) as isize)
+        .collect::<HashSet<isize>>().len()
 }
 
 fn parse_asteroids(s: &String) -> Vec<Point>{
@@ -143,27 +128,6 @@ let ex =
         assert_eq!(Point::new(8,3).degrees_360(&Point::new(8,2)),0.0);
 
         assert_eq!(Point::new(8,3).degrees_360(&Point::new(8,0)),0.0);
-    }
-    #[test]
-    fn test_one_360_ex() {
-        let ex =
-            ".#....#####...#..
-##...##.#####..##
-##...#...#.#####.
-..#.....#...###..
-..#.#.....#....##";
-        let mut asteroids = parse_asteroids(&String::from(ex));
-        let (lazer,_) = pt1(&asteroids);
-        let mut removed = one_360(&lazer, &asteroids);
-        assert_eq!(removed.len(), 30);
-
-        asteroids = asteroids.iter().filter(|other| !removed.contains(&other)).cloned().collect();
-        removed = one_360(&lazer, &asteroids);
-        assert_eq!(removed.len(), 5);
-
-        asteroids = asteroids.iter().filter(|other| !removed.contains(&other)).cloned().collect();
-        removed = one_360(&lazer, &asteroids);
-        assert_eq!(removed.len(), 1);
     }
 
     #[test]
