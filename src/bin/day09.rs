@@ -14,7 +14,7 @@ mod test {
 
     #[test]
     fn regression() {
-        let nums: Vec<i64> = read_lines(9)[0].split(',').map(|s| s.parse().unwrap()).collect();
+        let mem: Vec<i64> = read_lines(9)[0].split(',').map(|s| s.parse().unwrap()).collect();
         assert_eq!(IntCode::resolve(&vec![1], &mem), 4261108180);
         assert_eq!(IntCode::resolve(&vec![2], &mem), 77944);
     }
