@@ -22,6 +22,8 @@ Attempt to solve aoc2019 in rust.
 
 [match](https://doc.rust-lang.org/rust-by-example/flow_control/match.html)
 
+[match guard](https://doc.rust-lang.org/rust-by-example/flow_control/match/guard.html)
+
 ---
 ###### Ownership
 

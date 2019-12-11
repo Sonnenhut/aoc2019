@@ -25,10 +25,10 @@ fn fuel(mass: usize) -> usize {
 // calc the fuel plus the fuel for the fuel plus the fuel for the fuel plus the fuel for ...
 fn total_fuel(mass: usize) -> usize {
     let res = fuel(mass);
-    if res > 0 {
-        return total_fuel(res) + res
+    match res {
+        r if r > 0 =>  total_fuel(r) + r,
+        _ => res
     }
-    res
 }
 
 #[cfg(test)]
