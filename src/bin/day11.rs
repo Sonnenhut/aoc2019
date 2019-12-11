@@ -64,8 +64,6 @@ fn mod_loc(loc : &(i64,i64,char), modifier: i64) -> (i64,i64,char) {
 
 #[cfg(test)]
 mod test {
-    use std::process::exit;
-
     use super::*;
 
     #[test]
