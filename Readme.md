@@ -28,7 +28,7 @@ Attempt to solve aoc2019 in rust.
 
 [measure time (for benchmarking functions)](https://rust-lang-nursery.github.io/rust-cookbook/datetime/duration.html)
 
-[split_at_mut when borrowing from a slice/vec two times](https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut)
+[split_at_mut, when borrowing mutliple elements in a vec things get weird (see day 12 "step" fn)](https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut)
 
 
 ---
