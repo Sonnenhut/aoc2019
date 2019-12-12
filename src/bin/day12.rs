@@ -10,6 +10,7 @@ use std::borrow::{Borrow, BorrowMut};
 fn main() {
     let mem: Vec<Planet> = parse(&read_lines(12));
     println!("pt1: {}", pt1(&mem,1000)); // 6423
+    //println!("pt1: {}", pt2(&mem,100)); // 6423
     //println!("pt2: ", ); //
 }
 
@@ -18,6 +19,66 @@ fn pt1(planets: &Vec<Planet>, steps: isize) -> isize{
     for _ in 0..steps {
         step(&mut p_mut)
     }
+    p_mut.iter().map(Planet::energy).sum::<isize>()
+}
+
+fn pt2(planets: &Vec<Planet>) -> isize{
+    let mut p_mut = planets.to_vec();
+    let mut cycle_time_x : Vec<isize> = vec![0; p_mut.len()];
+    let mut cycle_time_y : Vec<isize> = vec![0; p_mut.len()];
+    let mut cycle_time_z : Vec<isize> = vec![0; p_mut.len()];
+    let mut cycle_times : Vec<Vec<isize>> = vec![vec![0,0,0]; p_mut.len()];
+    let mut cycle_cnt = 1;
+    while cycle_times.iter().flatten().any(|e| *e == 0) {
+    //while cycle_time_x.contains(&0) || cycle_time_y.contains(&0) || cycle_time_z.contains(&0) {
+        step(&mut p_mut);
+
+        for(i,(original, modified)) in planets.iter().zip(p_mut.iter()).enumerate() {
+            if original.pos.x == modified.pos.x && original.vel.x == modified.vel.x && cycle_times[i][0] == 0 {
+                cycle_times[i][0] = cycle_cnt;
+                //cycle_time_x[i] = cycle_cnt;
+                println!("[{}] returned initial x state after {}", i, cycle_cnt);
+            }
+            if original.pos.y == modified.pos.y && original.vel.y == modified.vel.y && cycle_times[i][1] == 0 {
+                cycle_times[i][1] = cycle_cnt;
+                //cycle_time_y[i] = cycle_cnt;
+                println!("[{}] returned initial y state after {}", i, cycle_cnt);
+            }
+            if original.pos.z == modified.pos.z && original.vel.z == modified.vel.z && cycle_times[i][2] == 0{
+                cycle_times[i][2] = cycle_cnt;
+                //cycle_time_z[i] = cycle_cnt;
+                println!("[{}] returned initial z state after {}", i, cycle_cnt);
+            }
+        }
+        cycle_cnt += 1;
+
+        if cycle_cnt % 1000 == 0{
+            //println!("{:?}", [cycle_time_z.clone(), cycle_time_y.clone(), cycle_time_x.clone()].concat());
+            //break;
+        }
+        if cycle_cnt == 100000 {
+            println!("halting after 100000 iterations");
+            break;
+        }
+    }
+/*
+
+    let x_repeat = lcm_vec(&cycle_time_x);
+    let y_repeat = lcm_vec(&cycle_time_y);
+    let z_repeat = lcm_vec(&cycle_time_z);
+    let res = lcm_vec(&vec![x_repeat,y_repeat,z_repeat]);
+
+    let possible_cycle_times: Vec<isize> = [cycle_time_x, cycle_time_y, cycle_time_z].concat();
+*/
+
+    let mut possible_cycle_times : HashSet<isize> = cycle_times.iter().clone().flatten().map(|n|*n).collect();
+    possible_cycle_times.insert(36);
+    possible_cycle_times.insert(12);
+    println!("found all cycle values {:?};", possible_cycle_times);
+    let res = lcm_vec(&possible_cycle_times.iter().cloned().collect::<Vec<isize>>());
+
+
+    println!("found all cycle values {:?}; lcd : {}", possible_cycle_times, res);
     p_mut.iter().map(Planet::energy).sum::<isize>()
 }
 
@@ -114,6 +175,32 @@ fn gravity(from: isize, to: isize) -> isize {
     }
 }
 
+fn gcd(mut m: isize, mut n: isize) -> isize {
+    while m != 0 {
+        let old_m = m;
+        m = n % m;
+        n = old_m;
+    }
+    n.abs()
+}
+
+fn lcm(a: isize, b: isize) -> isize {
+    let res = a * b / gcd(a, b);
+
+    println!("lcm {} {} => {}",a,b , res);
+    res
+}
+
+fn lcm_vec(v: &Vec<isize>) -> isize {
+    v.iter().fold(-1,|acc, n| {
+        if acc == -1 {
+            *n
+        } else {
+            lcm(*n, acc)
+        }
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -187,4 +274,25 @@ mod test {
         assert_eq!(pt1(&planets,10), 179);
     }
 
+    #[test]
+    fn test_pt2() {
+        let mut ex =
+            "<x=-1, y=0, z=2>
+<x=2, y=-10, z=-7>
+<x=4, y=-8, z=8>
+<x=3, y=5, z=-1>";
+        let mut planets: Vec<Planet> = parse(&ex.split('\n').map(String::from).collect());
+        pt2(&planets);
+
+
+        ex =
+"<x=-8, y=-10, z=0>
+<x=5, y=5, z=10>
+<x=2, y=-7, z=3>
+<x=9, y=-8, z=-3>";
+
+        planets = parse(&ex.split('\n').map(String::from).collect());
+        pt2(&planets);
+
+    }
 }
