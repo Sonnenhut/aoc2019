@@ -1,17 +1,11 @@
-use std::collections::{HashMap, HashSet};
-
-use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
-use std::hash::Hash;
 use std::cmp::Ordering;
-use std::cell::RefCell;
-use std::borrow::{Borrow, BorrowMut};
+use std::ops::Add;
 
 fn main() {
     let mem: Vec<Planet> = parse(&read_lines(12));
     println!("pt1: {}", pt1(&mem,1000)); // 6423
-    //println!("pt1: {}", pt2(&mem,100)); // 6423
-    //println!("pt2: ", ); //
+    println!("pt2: {}", pt2(&mem)); // 327636285682704
 }
 
 fn pt1(planets: &Vec<Planet>, steps: isize) -> isize{
@@ -22,72 +16,28 @@ fn pt1(planets: &Vec<Planet>, steps: isize) -> isize{
     p_mut.iter().map(Planet::energy).sum::<isize>()
 }
 
-fn pt2(planets: &Vec<Planet>) -> isize{
+fn pt2(planets: &Vec<Planet>) -> isize {
     let mut p_mut = planets.to_vec();
-    let mut cycle_time_x : Vec<isize> = vec![0; p_mut.len()];
-    let mut cycle_time_y : Vec<isize> = vec![0; p_mut.len()];
-    let mut cycle_time_z : Vec<isize> = vec![0; p_mut.len()];
-    let mut cycle_times : Vec<Vec<isize>> = vec![vec![0,0,0]; p_mut.len()];
+    let mut cycle_times : Vec<Option<isize>> = vec![None, None, None];
     let mut cycle_cnt = 1;
-    while cycle_times.iter().flatten().any(|e| *e == 0) {
-    //while cycle_time_x.contains(&0) || cycle_time_y.contains(&0) || cycle_time_z.contains(&0) {
+    while cycle_times.contains(&None) {
         step(&mut p_mut);
 
-        for(i,(original, modified)) in planets.iter().zip(p_mut.iter()).enumerate() {
-            if original.pos.x == modified.pos.x && original.vel.x == modified.vel.x && cycle_times[i][0] == 0 {
-                cycle_times[i][0] = cycle_cnt;
-                //cycle_time_x[i] = cycle_cnt;
-                println!("[{}] returned initial x state after {}", i, cycle_cnt);
-            }
-            if original.pos.y == modified.pos.y && original.vel.y == modified.vel.y && cycle_times[i][1] == 0 {
-                cycle_times[i][1] = cycle_cnt;
-                //cycle_time_y[i] = cycle_cnt;
-                println!("[{}] returned initial y state after {}", i, cycle_cnt);
-            }
-            if original.pos.z == modified.pos.z && original.vel.z == modified.vel.z && cycle_times[i][2] == 0{
-                cycle_times[i][2] = cycle_cnt;
-                //cycle_time_z[i] = cycle_cnt;
-                println!("[{}] returned initial z state after {}", i, cycle_cnt);
-            }
+        if planets.iter().zip(p_mut.iter()).all(|(a, b)| a.pos.x == b.pos.x && a.vel.x == b.vel.x) {
+            cycle_times[0] = cycle_times[0].or(Some(cycle_cnt));
+        }
+        if planets.iter().zip(p_mut.iter()).all(|(a, b)| a.pos.y == b.pos.y && a.vel.y == b.vel.y) {
+            cycle_times[1] = cycle_times[1].or(Some(cycle_cnt));
+        }
+        if planets.iter().zip(p_mut.iter()).all(|(a, b)| a.pos.z == b.pos.z && a.vel.z == b.vel.z) {
+            cycle_times[2] = cycle_times[2].or(Some(cycle_cnt));
         }
         cycle_cnt += 1;
-
-        if cycle_cnt % 1000 == 0{
-            //println!("{:?}", [cycle_time_z.clone(), cycle_time_y.clone(), cycle_time_x.clone()].concat());
-            //break;
-        }
-        if cycle_cnt == 100000 {
-            println!("halting after 100000 iterations");
-            break;
-        }
     }
-/*
-
-    let x_repeat = lcm_vec(&cycle_time_x);
-    let y_repeat = lcm_vec(&cycle_time_y);
-    let z_repeat = lcm_vec(&cycle_time_z);
-    let res = lcm_vec(&vec![x_repeat,y_repeat,z_repeat]);
-
-    let possible_cycle_times: Vec<isize> = [cycle_time_x, cycle_time_y, cycle_time_z].concat();
-*/
-
-    let mut possible_cycle_times : HashSet<isize> = cycle_times.iter().clone().flatten().map(|n|*n).collect();
-    possible_cycle_times.insert(36);
-    possible_cycle_times.insert(12);
-    println!("found all cycle values {:?};", possible_cycle_times);
-    let res = lcm_vec(&possible_cycle_times.iter().cloned().collect::<Vec<isize>>());
-
-
-    println!("found all cycle values {:?}; lcd : {}", possible_cycle_times, res);
-    p_mut.iter().map(Planet::energy).sum::<isize>()
+    lcm(cycle_times[0].unwrap(), lcm(cycle_times[1].unwrap(), cycle_times[2].unwrap()))
 }
 
 fn step(planets: &mut Vec<Planet>) {
-    apply_gravity(planets);
-    apply_velocity(planets);
-}
-
-fn apply_gravity(planets : &mut Vec<Planet>) {
     for i in 1..planets.len() {
         let (left, right) = planets.split_at_mut(i);
         let p1 = left.last_mut().unwrap();
@@ -96,9 +46,6 @@ fn apply_gravity(planets : &mut Vec<Planet>) {
             p2.mod_gravity_from(p1);
         }
     }
-}
-
-fn apply_velocity(planets : &mut Vec<Planet>) {
     for p in planets {
         p.apply_velocity()
     }
@@ -129,7 +76,6 @@ impl Coord {
             .map(|s| s.trim())
             .filter_map(|part| part.parse().ok())
             .collect();
-        //println!("parsed {:?} from {}", parsed, s);
         Coord::at(parsed[0],parsed[1],parsed[2])
     }
     fn at(x: isize, y: isize, z: isize) -> Coord {
@@ -185,20 +131,7 @@ fn gcd(mut m: isize, mut n: isize) -> isize {
 }
 
 fn lcm(a: isize, b: isize) -> isize {
-    let res = a * b / gcd(a, b);
-
-    println!("lcm {} {} => {}",a,b , res);
-    res
-}
-
-fn lcm_vec(v: &Vec<isize>) -> isize {
-    v.iter().fold(-1,|acc, n| {
-        if acc == -1 {
-            *n
-        } else {
-            lcm(*n, acc)
-        }
-    })
+    a * b / gcd(a, b)
 }
 
 #[cfg(test)]
@@ -212,7 +145,7 @@ mod test {
     }
 
     #[test]
-    fn test_gravity() {
+    fn test_step() {
         let ex =
             "<x=-1, y=0, z=2>
 <x=2, y=-10, z=-7>
@@ -282,7 +215,7 @@ mod test {
 <x=4, y=-8, z=8>
 <x=3, y=5, z=-1>";
         let mut planets: Vec<Planet> = parse(&ex.split('\n').map(String::from).collect());
-        pt2(&planets);
+        assert_eq!(pt2(&planets), 2772);
 
 
         ex =
@@ -292,7 +225,6 @@ mod test {
 <x=9, y=-8, z=-3>";
 
         planets = parse(&ex.split('\n').map(String::from).collect());
-        pt2(&planets);
-
+        assert_eq!(pt2(&planets), 4686774924);
     }
 }
