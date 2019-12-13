@@ -4,7 +4,7 @@ use std::thread;
 use crate::intcode::IntCode;
 
 impl IntCode2 {
-    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<IntCodeOuput>) {
+    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<Option<i64>>) {
         let mem_copy = mem.to_vec();
         let (send_in, recv_in) = channel();
         let (send_out, recv_out) = channel();
@@ -28,12 +28,12 @@ impl IntCode2 {
             1 => self.write_at(3, &param_modes, p1? + p2?), // add
             2 => self.write_at(3, &param_modes, p1? * p2?), // mul
             3 => { // read_in
-                self.output.send(IntCodeOuput::RequestInput);
+                self.output.send(None); // Give me more input!
                 let input = self.inputs.recv().unwrap();
                 self.write_at(1, &param_modes, input)
             },
             4 => { //write_out
-                self.output.send(IntCodeOuput::Output(p1?));
+                self.output.send(Some(p1?));
                 Some(csr + 2)
             },
             5 => if p1? != 0 { Some(p2? as usize) } else { Some(csr + 3) }, // jump-if-true
@@ -91,15 +91,9 @@ impl IntCode2 {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
-pub enum IntCodeOuput {
-    RequestInput,
-    Output(i64)
-}
-
 pub struct IntCode2 {
     inputs: Receiver<i64>,
-    output: Sender<IntCodeOuput>,
+    output: Sender<Option<i64>>,
     csr: Option<usize>,
     mem: Vec<i64>,
     base: i64,

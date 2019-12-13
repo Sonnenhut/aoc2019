@@ -6,7 +6,6 @@ use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
 use aoc2019::intcode2::IntCode2;
-use aoc2019::intcode2::IntCodeOuput;
 use std::sync::mpsc::RecvTimeoutError::Disconnected;
 use std::sync::mpsc::{RecvTimeoutError, RecvError};
 
@@ -25,21 +24,16 @@ fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     loop {
         let mut x_opt = output.recv();
         match x_opt {
-            Err(_) => {
-                println!("IntCode end.");
-                break;
-            },
-            Ok(IntCodeOuput::RequestInput) => {input.send(calc_next_input(&map));},
-            Ok(IntCodeOuput::Output(x)) => {
+            Err(_) => {break;},
+            Ok(None) => {input.send(calc_next_input(&map));},
+            Ok(Some(x)) => {
                 let (y_opt, val_opt) = (output.recv().unwrap(), output.recv().unwrap());
-                if let (IntCodeOuput::Output(y), IntCodeOuput::Output(val)) = (y_opt.clone(), val_opt.clone()) {
+                if let (Some(y), Some(val)) = (y_opt.clone(), val_opt.clone()) {
                     map.insert((x,y), val);
                     if print { draw(&map); }
-                } else { panic!("Got an unconsistent amount of outputs!");}
+                } else { panic!("Got an inconsistent amount of outputs!");}
             }
         }
-
-
     }
     score(&map)
 }
@@ -65,7 +59,7 @@ fn draw(map: &HashMap<(i64,i64), i64>) {
     }
     println!("\nscore: {}", score(map));
     io::stdout().flush();
-    thread::sleep(Duration::from_millis(1000));
+    thread::sleep(Duration::from_millis(100));
 }
 
 fn score(map: &HashMap<(i64,i64), i64>) -> i64{
@@ -82,26 +76,6 @@ fn calc_next_input(map: &HashMap<(i64,i64),i64>) -> i64 {
         .map(|((x,_),_)|x)
         .next().unwrap();
     ball_x.cmp(paddle_x) as i64
-}
-
-fn read_input() -> i64 {
-    print!("Input next movement [l]eft/[r]ight/[s]tay (or a/s/d): ");
-    io::stdout().flush();
-    let mut wanted = HashMap::new();
-    wanted.insert('a',-1);
-    wanted.insert('s',0);
-    wanted.insert('d',1);
-    wanted.insert('l',-1);
-    wanted.insert('s',0);
-    wanted.insert('r',1);
-    let mut character = [0];
-    loop {
-        io::stdin().read(&mut character).unwrap();
-        let c = character[0] as char;
-        if wanted.get(&c).is_some() {
-            return wanted[&c]
-        }
-    }
 }
 
 fn pt1(mem: &Vec<i64>) -> usize  {
