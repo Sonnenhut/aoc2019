@@ -2,8 +2,13 @@ impl IntCode {
     pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode{
         IntCode {inputs: inputs.clone(), csr: Some(0), mem: mem.clone(), output:vec![], base: 0}
     }
-    pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
+    pub fn resolve_single(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
         IntCode::create(inputs, mem).run()
+    }
+    pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> Vec<i64> {
+        let mut int_code = IntCode::create(inputs, mem);
+        int_code.run();
+        int_code.output
     }
     pub fn run(&mut self) -> i64 {
         while self.csr.is_some() {
@@ -181,62 +186,62 @@ mod test {
 
     #[test]
     fn test_mem_pt2_day5() {
-        assert_eq!(IntCode::resolve(&vec![8], &vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]), 1); // is eq 8
+        assert_eq!(IntCode::resolve_single(&vec![8], &vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]), 1); // is eq 8
         // lt 8
         let lt8_position_mode = vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
-        assert_eq!(IntCode::resolve(&vec![1], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![2], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![3], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![4], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![5], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![6], &lt8_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![7], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![1], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![2], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![3], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![4], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![5], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![6], &lt8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![7], &lt8_position_mode), 1);
 
         // eq 8
         let eq8_position_mode = vec![3, 3, 1108, -1, 8, 3, 4, 3, 99];
-        assert_eq!(IntCode::resolve(&vec![1], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![2], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![3], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![4], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![5], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![6], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![7], &eq8_position_mode), 0);
-        assert_eq!(IntCode::resolve(&vec![8], &eq8_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![1], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![2], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![3], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![4], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![5], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![6], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![7], &eq8_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![8], &eq8_position_mode), 1);
 
         // lt 8
         let lt8_immediate_mode = vec![3, 3, 1107, -1, 8, 3, 4, 3, 99];
-        assert_eq!(IntCode::resolve(&vec![1], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![2], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![3], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![4], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![5], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![6], &lt8_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![7], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![1], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![2], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![3], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![4], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![5], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![6], &lt8_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![7], &lt8_immediate_mode), 1);
 
 
         // non_zero
         let non_zero_position_mode = vec![3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9];
-        assert_eq!(IntCode::resolve(&vec![1], &non_zero_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![-1], &non_zero_position_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![0], &non_zero_position_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![1], &non_zero_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![-1], &non_zero_position_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![0], &non_zero_position_mode), 0);
 
         // non_zero
         let non_zero_immediate_mode = vec![3,3,1105,-1,9,1101,0,0,12,4,12,99,1];
-        assert_eq!(IntCode::resolve(&vec![1], &non_zero_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![-1], &non_zero_immediate_mode), 1);
-        assert_eq!(IntCode::resolve(&vec![0], &non_zero_immediate_mode), 0);
+        assert_eq!(IntCode::resolve_single(&vec![1], &non_zero_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![-1], &non_zero_immediate_mode), 1);
+        assert_eq!(IntCode::resolve_single(&vec![0], &non_zero_immediate_mode), 0);
 
         //larger mem
         let large_mem = vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
                              1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
                              999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
-        assert_eq!(IntCode::resolve(&vec![6], &large_mem), 999); // below 8
-        assert_eq!(IntCode::resolve(&vec![6], &large_mem), 999);
-        assert_eq!(IntCode::resolve(&vec![7], &large_mem), 999);
-        assert_eq!(IntCode::resolve(&vec![8], &large_mem), 1000); // is 8
-        assert_eq!(IntCode::resolve(&vec![9], &large_mem), 1001);
-        assert_eq!(IntCode::resolve(&vec![10], &large_mem), 1001);
-        assert_eq!(IntCode::resolve(&vec![11], &large_mem), 1001);
+        assert_eq!(IntCode::resolve_single(&vec![6], &large_mem), 999); // below 8
+        assert_eq!(IntCode::resolve_single(&vec![6], &large_mem), 999);
+        assert_eq!(IntCode::resolve_single(&vec![7], &large_mem), 999);
+        assert_eq!(IntCode::resolve_single(&vec![8], &large_mem), 1000); // is 8
+        assert_eq!(IntCode::resolve_single(&vec![9], &large_mem), 1001);
+        assert_eq!(IntCode::resolve_single(&vec![10], &large_mem), 1001);
+        assert_eq!(IntCode::resolve_single(&vec![11], &large_mem), 1001);
     }
 
     #[test]

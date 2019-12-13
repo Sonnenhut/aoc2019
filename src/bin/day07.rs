@@ -45,7 +45,7 @@ fn thruster_out(seq: &Vec<u64>, mem: &Vec<i64>) -> i64 {
         if remaining_seq.is_empty() {
             None
         } else {
-            let out = IntCode::resolve(&vec![remaining_seq.remove(0) as i64, *last as i64], &mem);
+            let out = IntCode::resolve_single(&vec![remaining_seq.remove(0) as i64, *last as i64], &mem);
             Some(out)
         }
     }).max().unwrap()
