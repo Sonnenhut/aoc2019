@@ -1,7 +1,6 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::HashSet;
 
 use aoc2019::read_lines;
-use std::time::Instant;
 
 fn main() {
     let nums: Vec<Vec<String>> = read_lines(3).into_iter().map(|l| parse_wire(&l)).collect();

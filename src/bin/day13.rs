@@ -1,17 +1,16 @@
 use std::collections::HashMap;
 use std::io;
-use std::io::{Read, Write};
-use std::sync::mpsc::{RecvError, RecvTimeoutError};
+use std::io::Write;
 use std::thread;
-use std::time::Duration;
 
 use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
+use std::time::Duration;
 
 fn main() {
     let mem: Vec<i64> = read_lines(13)[0].split(',').map(|s| s.parse().unwrap()).collect();
     println!("pt1: {}", pt1(&mem)); // 452
-    println!("pt2: {}", pt2(&mem, false)); // 21415
+    println!("pt2: {}", pt2(&mem, true)); // 21415
 }
 
 fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
@@ -20,27 +19,35 @@ fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     let (input, output) = IntCode::run_async(&free_play);
     let mut map: HashMap<(i64,i64),i64> = HashMap::new();
 
+    let mut ball_updated = false;
+    let mut paddle_updated = false;
     loop {
-        let x_opt = output.recv_timeout(Duration::from_millis(1));
-        if x_opt.is_err() { // no output data, get the next input for the intCode
-            if x_opt.err().unwrap() == RecvTimeoutError::Disconnected {
-                println!("IntCode disconnected.");
-                break;
-            }
-            let next = calc_next_input(&map);
-            input.send(next);
+        let x_opt = output.recv();
+        if x_opt.is_err() {
+            println!("IntCode disconnected.");
+            break;
         } else {
             let (x, y, val) = (x_opt.unwrap(), output.recv().unwrap(), output.recv().unwrap());
             map.insert((x, y), val);
-            if print {draw(&map)};
+
+            ball_updated |= val == 4;
+            paddle_updated |= val == 3;
+            if ball_updated && paddle_updated {
+                let res  = pos_x(4,&map).cmp(&pos_x(3,&map)) as i64;
+                let _ =input.send(res);
+                paddle_updated = res == 0; // paddle not changed, thus don't expect an update
+                ball_updated = false;
+
+                if print {draw(&map)};
+            }
         }
     }
     score(&map)
 }
 
 fn draw(map: &HashMap<(i64,i64), i64>) {
-    print!("\x1B[2J"); // clear
-    io::stdout().flush();
+    //print!("\x1B[2J"); // clear
+    //io::stdout().flush();
     let max_x = *map.keys().map(|(x,_)|x).max().unwrap_or(&0);
     let max_y = *map.keys().map(|(_,y)|y).max().unwrap_or(&0);
     for y in 0..=max_y {
@@ -58,7 +65,7 @@ fn draw(map: &HashMap<(i64,i64), i64>) {
         print!("\n")
     }
     println!("\nscore: {}", score(map));
-    io::stdout().flush();
+    let _ = io::stdout().flush();
     thread::sleep(Duration::from_millis(100));
 }
 
@@ -66,16 +73,11 @@ fn score(map: &HashMap<(i64,i64), i64>) -> i64{
     *map.get(&(-1_i64, 0_i64)).unwrap_or(&0)
 }
 
-fn calc_next_input(map: &HashMap<(i64,i64),i64>) -> i64 {
-    let ball_x = map.iter()
-        .filter(|((_,_),v)| **v == 4)
-        .map(|((x,_),_)|x)
-        .next().unwrap();
-    let paddle_x = map.iter()
-        .filter(|((_,_),v)| **v == 3)
-        .map(|((x,_),_)|x)
-        .next().unwrap();
-    ball_x.cmp(paddle_x) as i64
+fn pos_x(val: i64, map: &HashMap<(i64,i64),i64>) -> i64 {
+    map.iter()
+        .filter(|((_,_),v)| **v == val)
+        .map(|((x,_),_)|*x)
+        .next().unwrap()
 }
 
 fn pt1(mem: &Vec<i64>) -> usize  {
