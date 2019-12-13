@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
-use aoc2019::intcode2::IntCode2;
+use aoc2019::intcode2::IntCode;
 use std::sync::mpsc::RecvTimeoutError::Disconnected;
 use std::sync::mpsc::{RecvTimeoutError, RecvError};
 
@@ -18,7 +18,7 @@ fn main() {
 fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     let mut free_play = mem.to_vec();
     free_play[0] = 2;
-    let (input, output) = IntCode2::run_async(&free_play);
+    let (input, output) = IntCode::run_async(&free_play);
     let mut map: HashMap<(i64,i64),i64> = HashMap::new();
 
     loop {

@@ -1,37 +1,44 @@
+use std::sync::mpsc::{Sender, Receiver, channel};
+use std::thread;
+use std::convert::TryInto;
+
 impl IntCode {
-    pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode{
-        IntCode {inputs: inputs.clone(), csr: Some(0), mem: mem.clone(), output:vec![], base: 0}
+    pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode {
+        let mem_copy = mem.to_vec();
+        let (send_in, recv_in) = channel();
+        let (send_out, recv_out) = channel();
+        for input in inputs {
+            send_in.send(*input);
+        }
+        IntCode {inputs: recv_in, csr: Some(0), mem: mem.clone(), output:send_out, base: 0}
+    }
+    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<Option<i64>>) {
+        let mem_copy = mem.to_vec();
+        let (send_in, recv_in) = channel();
+        let (send_out, recv_out) = channel();
+        thread::spawn(move || {
+            let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0};
+            int_code.run()
+        });
+        (send_in, recv_out)
     }
     pub fn resolve_single(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
-        IntCode::create(inputs, mem).run()
+        *IntCode::resolve(&inputs, &mem).last().unwrap()
     }
     pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> Vec<i64> {
-        let mut int_code = IntCode::create(inputs, mem);
-        int_code.run();
-        int_code.output
+        let (send_in, recv_out) = IntCode::run_async(mem);
+        for input in inputs {
+            send_in.send(*input);
+        }
+        recv_out.iter().filter_map(|opt| opt).collect()
     }
-    pub fn run(&mut self) -> i64 {
+    pub fn run(&mut self) {
         while self.csr.is_some() {
             self.csr = self.run_single();
         }
-        *self.output.last().unwrap_or(&-1)
-    }
-    pub fn push_input(&mut self, input : i64) {
-        self.inputs.push(input);
     }
     pub fn memory(&self) -> Vec<i64>{
         self.mem.to_vec()
-    }
-    pub fn next(&mut self) -> Option<i64> { // until next output
-        let last_out = self.output.clone();
-        while self.csr.is_some() {
-            self.csr = self.run_single();
-            if last_out != self.output {
-                // some new output, send it back
-                return self.output.last().cloned();
-            }
-        }
-        return None
     }
     fn run_single(&mut self) -> Option<usize> {
         let csr = self.csr.unwrap();
@@ -42,11 +49,12 @@ impl IntCode {
             1 => self.write_at(3, &param_modes, p1? + p2?), // add
             2 => self.write_at(3, &param_modes, p1? * p2?), // mul
             3 => { // read_in
-                let input = self.next_input();
+                self.output.send(None); // Give me more input!
+                let input = self.inputs.recv().unwrap();
                 self.write_at(1, &param_modes, input)
             },
             4 => { //write_out
-                self.output.push(p1?);
+                self.output.send(Some(p1?));
                 Some(csr + 2)
             },
             5 => if p1? != 0 { Some(p2? as usize) } else { Some(csr + 3) }, // jump-if-true
@@ -61,10 +69,6 @@ impl IntCode {
             _ => panic!("Unknown opcode")
         }
     }
-    fn next_input(&mut self) -> i64{
-        self.inputs.remove(0)
-    }
-
     fn write_at(&mut self, offset: usize, param_modes: &Vec<u32>, val: i64) -> Option<usize> {
         let out_csr = self.resolve_param_csr(offset, &param_modes).unwrap() as usize;
         if self.mem.len() <= out_csr {
@@ -108,8 +112,8 @@ impl IntCode {
 }
 
 pub struct IntCode {
-    inputs: Vec<i64>,
-    output: Vec<i64>,
+    inputs: Receiver<i64>,
+    output: Sender<Option<i64>>,
     csr: Option<usize>,
     mem: Vec<i64>,
     base: i64,
@@ -169,19 +173,6 @@ mod test {
         to_test = IntCode::create(&vec![0], &vec![2, 4, 4, 5, 99, 0]);
         to_test.run();
         assert_eq!(to_test.mem, vec![2, 4, 4, 5, 99, 9801]);
-    }
-
-    #[test]
-    fn fix_nonzero_code() {
-        let mut to_test = IntCode::create(&vec![1], &vec![3, 15, 1, 15, 6, 6, 1100, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/0]);
-        to_test.csr = to_test.run_single();
-        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1100, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
-        to_test.csr = to_test.run_single();
-        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/1]);
-        to_test.csr = to_test.run_single();
-        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
-        to_test.csr = to_test.run_single();
-        assert_eq!(to_test.mem, vec![3, 15, 1, 15, 6, 6, 1101, 1, 238, 15, 104, 0, 1101, 40, 0, /*15*/239]);
     }
 
     #[test]
@@ -247,31 +238,24 @@ mod test {
     #[test]
     fn test_access_outside_intial_memory_day9() {
         let mut to_test = IntCode::create(&vec![1], &vec![1, 5, 6, 0, 99]);
-        to_test.csr = to_test.run_single();
+        to_test.run_single();
         assert_eq!(to_test.mem, vec![0, 5, 6, 0, 99]);
 
         to_test = IntCode::create(&vec![1], &vec![1, 6, 7, 0, 99]);
-        to_test.csr = to_test.run_single();
+        to_test.run_single();
         assert_eq!(to_test.mem, vec![0, 6, 7, 0, 99]);
 
         to_test = IntCode::create(&vec![1], &vec![1, 7, 8, 0, 99]);
-        to_test.csr = to_test.run_single();
+        to_test.run_single();
         assert_eq!(to_test.mem, vec![0, 7, 8, 0, 99]);
     }
 
     #[test]
     fn test_read_write_outside_initial_memory() {
-        let mut to_test = IntCode::create(&vec![], &vec![109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99]);
-        to_test.run();
-        assert_eq!(to_test.output, vec![109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99]);
+        assert_eq!(IntCode::resolve(&vec![], &vec![109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99]), vec![109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99]);
 
-        to_test = IntCode::create(&vec![], &vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0]);
-        to_test.run();
-        assert_eq!(to_test.output, vec![1219070632396864]);
+        assert_eq!(IntCode::resolve(&vec![], &vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0]), vec![1219070632396864]);
 
-        to_test = IntCode::create(&vec![], &vec![104, 1125899906842624, 99]);
-        to_test.run();
-        assert_eq!(to_test.output, vec![1125899906842624]);
+        assert_eq!(IntCode::resolve(&vec![], &vec![104, 1125899906842624, 99]), vec![1125899906842624]);
     }
-
 }
