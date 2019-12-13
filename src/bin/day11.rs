@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use aoc2019::intcode::IntCode;
 use aoc2019::read_lines;
+use std::time::Duration;
 
 fn main() {
     let mem: Vec<i64> = read_lines(11)[0].split(',').map(|s| s.parse().unwrap()).collect();
@@ -11,25 +12,25 @@ fn main() {
 }
 
 fn pt1(mem: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
-    let mut int_code = IntCode::create(&vec![], &mem);
+    let (input, output) = IntCode::run_async(&mem);
     let mut colors : HashMap<(i64,i64), i64> = HashMap::new();
     let mut loc : (i64,i64,char) = (0,0,'^');
 
-    let mut optional = Some(start_panel);
-    while let Some(panel_color) = optional {
-        int_code.push_input(panel_color as i64);
-        let new_color = int_code.next();
 
-        optional = if new_color.is_some() {
-            colors.insert((loc.0, loc.1),new_color.unwrap());
+    let mut last_tile = Some(start_panel);
+    while let Some(tile_color) = last_tile {
+        let _ = input.send(tile_color);
+        let new_tile = output.recv();
 
-            let direction = int_code.next().unwrap();
+        last_tile = if new_tile.is_ok() {
+            colors.insert((loc.0, loc.1),new_tile.unwrap());
+
+            let direction = output.recv().unwrap();
             loc = mod_loc(&loc, direction);
             colors.get(&(loc.0,loc.1)).cloned().or(Some(0))
-        } else {
-            None
-        }
+        } else {None}
     }
+
     colors
 }
 
@@ -65,6 +66,14 @@ fn mod_loc(loc : &(i64,i64,char), modifier: i64) -> (i64,i64,char) {
 #[cfg(test)]
 mod test {
     use super::*;
+
+
+    #[test]
+    fn regression() {
+        let mem: Vec<i64> = read_lines(11)[0].split(',').map(|s| s.parse().unwrap()).collect();
+        assert_eq!(pt1(&mem,0).len(), 2539);
+        pt2(&mem);// ZLEBKJRA
+    }
 
     #[test]
     fn test_mod_loc() {

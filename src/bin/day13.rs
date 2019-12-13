@@ -1,13 +1,12 @@
-use aoc2019::read_lines;
-use aoc2019::intcode::IntCode;
+use std::collections::HashMap;
 use std::io;
 use std::io::{Read, Write};
+use std::sync::mpsc::{RecvError, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
-use std::collections::HashMap;
-use aoc2019::intcode2::IntCode;
-use std::sync::mpsc::RecvTimeoutError::Disconnected;
-use std::sync::mpsc::{RecvTimeoutError, RecvError};
+
+use aoc2019::intcode::IntCode;
+use aoc2019::read_lines;
 
 fn main() {
     let mem: Vec<i64> = read_lines(13)[0].split(',').map(|s| s.parse().unwrap()).collect();
@@ -22,17 +21,18 @@ fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     let mut map: HashMap<(i64,i64),i64> = HashMap::new();
 
     loop {
-        let mut x_opt = output.recv();
-        match x_opt {
-            Err(_) => {break;},
-            Ok(None) => {input.send(calc_next_input(&map));},
-            Ok(Some(x)) => {
-                let (y_opt, val_opt) = (output.recv().unwrap(), output.recv().unwrap());
-                if let (Some(y), Some(val)) = (y_opt.clone(), val_opt.clone()) {
-                    map.insert((x,y), val);
-                    if print { draw(&map); }
-                } else { panic!("Got an inconsistent amount of outputs!");}
+        let x_opt = output.recv_timeout(Duration::from_millis(1));
+        if x_opt.is_err() { // no output data, get the next input for the intCode
+            if x_opt.err().unwrap() == RecvTimeoutError::Disconnected {
+                println!("IntCode disconnected.");
+                break;
             }
+            let next = calc_next_input(&map);
+            input.send(next);
+        } else {
+            let (x, y, val) = (x_opt.unwrap(), output.recv().unwrap(), output.recv().unwrap());
+            map.insert((x, y), val);
+            if print {draw(&map)};
         }
     }
     score(&map)
@@ -68,11 +68,11 @@ fn score(map: &HashMap<(i64,i64), i64>) -> i64{
 
 fn calc_next_input(map: &HashMap<(i64,i64),i64>) -> i64 {
     let ball_x = map.iter()
-        .filter(|((x,y),v)| **v == 4)
+        .filter(|((_,_),v)| **v == 4)
         .map(|((x,_),_)|x)
         .next().unwrap();
     let paddle_x = map.iter()
-        .filter(|((x,y),v)| **v == 3)
+        .filter(|((_,_),v)| **v == 3)
         .map(|((x,_),_)|x)
         .next().unwrap();
     ball_x.cmp(paddle_x) as i64

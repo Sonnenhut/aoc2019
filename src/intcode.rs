@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{Sender, Receiver, channel, sync_channel};
 use std::thread;
 use std::convert::TryInto;
 
@@ -12,7 +12,7 @@ impl IntCode {
         }
         IntCode {inputs: recv_in, csr: Some(0), mem: mem.clone(), output:send_out, base: 0}
     }
-    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<Option<i64>>) {
+    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<i64>) {
         let mem_copy = mem.to_vec();
         let (send_in, recv_in) = channel();
         let (send_out, recv_out) = channel();
@@ -30,7 +30,7 @@ impl IntCode {
         for input in inputs {
             send_in.send(*input);
         }
-        recv_out.iter().filter_map(|opt| opt).collect()
+        recv_out.iter().collect()
     }
     pub fn run(&mut self) {
         while self.csr.is_some() {
@@ -49,12 +49,11 @@ impl IntCode {
             1 => self.write_at(3, &param_modes, p1? + p2?), // add
             2 => self.write_at(3, &param_modes, p1? * p2?), // mul
             3 => { // read_in
-                self.output.send(None); // Give me more input!
                 let input = self.inputs.recv().unwrap();
                 self.write_at(1, &param_modes, input)
             },
             4 => { //write_out
-                self.output.send(Some(p1?));
+                self.output.send(p1?);
                 Some(csr + 2)
             },
             5 => if p1? != 0 { Some(p2? as usize) } else { Some(csr + 3) }, // jump-if-true
@@ -113,7 +112,7 @@ impl IntCode {
 
 pub struct IntCode {
     inputs: Receiver<i64>,
-    output: Sender<Option<i64>>,
+    output: Sender<i64>,
     csr: Option<usize>,
     mem: Vec<i64>,
     base: i64,
