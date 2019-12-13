@@ -6,36 +6,40 @@ use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
 use aoc2019::intcode2::IntCode2;
+use aoc2019::intcode2::IntCodeOuput;
 use std::sync::mpsc::RecvTimeoutError::Disconnected;
+use std::sync::mpsc::{RecvTimeoutError, RecvError};
 
 fn main() {
     let mem: Vec<i64> = read_lines(13)[0].split(',').map(|s| s.parse().unwrap()).collect();
     println!("pt1: {}", pt1(&mem)); // 452
-    println!("pt2: {}", pt2(&mem)); // 21415
+    println!("pt2: {}", pt2(&mem, false)); // 21415
 }
 
-fn pt2(mem: &Vec<i64>) -> i64 {
+fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     let mut free_play = mem.to_vec();
     free_play[0] = 2;
     let (input, output) = IntCode2::run_async(&free_play);
     let mut map: HashMap<(i64,i64),i64> = HashMap::new();
 
     loop {
-        let x_opt = output.recv_timeout(Duration::from_millis(1));
-        if x_opt.is_err() { // no output data, get the next input for the intCode
-            //input.send(read_input());
-            if x_opt.err().unwrap() == Disconnected {
-                println!("IntCode disconnected.");
+        let mut x_opt = output.recv();
+        match x_opt {
+            Err(_) => {
+                println!("IntCode end.");
                 break;
+            },
+            Ok(IntCodeOuput::RequestInput) => {input.send(calc_next_input(&map));},
+            Ok(IntCodeOuput::Output(x)) => {
+                let (y_opt, val_opt) = (output.recv().unwrap(), output.recv().unwrap());
+                if let (IntCodeOuput::Output(y), IntCodeOuput::Output(val)) = (y_opt.clone(), val_opt.clone()) {
+                    map.insert((x,y), val);
+                    if print { draw(&map); }
+                } else { panic!("Got an unconsistent amount of outputs!");}
             }
-            let next = calc_next_input(&map);
-            //println!("sending {}", next);
-            input.send(next);
-        } else {
-            let (x,y,val) = (x_opt.unwrap(),output.recv().unwrap(),output.recv().unwrap());
-            map.insert((x,y), val);
-            //draw(&map);
         }
+
+
     }
     score(&map)
 }
@@ -115,5 +119,6 @@ mod test {
     fn regression() {
         let mem: Vec<i64> = read_lines(13)[0].split(',').map(|s| s.parse().unwrap()).collect();
         assert_eq!(pt1(&mem), 452);
+        assert_eq!(pt2(&mem, false), 21415);
     }
 }
