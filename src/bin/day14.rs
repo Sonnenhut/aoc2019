@@ -4,17 +4,38 @@ use std::collections::HashMap;
 use aoc2019::read_lines;
 use std::hash::Hash;
 use std::iter::successors;
+use std::cmp::Ordering;
+use std::ops::RangeInclusive;
 
 fn main() {
-
     let reactions = parse(read_lines(14));
     println!("pt1: {}", pt1(&reactions)); // 337075
-    //println!("pt2: {}", pt2(&mem, true)); //
+    println!("pt2: {}", pt2(&reactions)); // 5194174
 }
 
 fn pt1(reactions: &HashMap<Chem, Vec<Chem>>) -> i64 {
     explode(Chem::new(1,&"FUEL".to_string()), &reactions)
 }
+
+fn pt2(reactions: &HashMap<Chem, Vec<Chem>>) -> i64 {
+    let ore_for_one_fuel = pt1(&reactions);
+    let trillion = 1000000000000;
+    let possible_fuels: Vec<i64> = (trillion/ore_for_one_fuel..=trillion/ore_for_one_fuel*2).collect();
+
+    let res = possible_fuels.binary_search_by(|fuel| {
+        let ore_needed = explode(Chem::new(*fuel,&"FUEL".to_string()), &reactions);
+        let target_range = (trillion-ore_for_one_fuel..=trillion);
+        if target_range.contains(&ore_needed) {
+            Ordering::Equal
+        } else if ore_needed < *target_range.start() {
+            Ordering::Less
+        } else if *target_range.end() < ore_needed {
+            Ordering::Greater
+        } else {panic!("unexpected idx not covered")}
+    });
+    possible_fuels[res.ok().unwrap_or(0)] as i64
+}
+
 
 fn explode(c: Chem, reactions: &HashMap<Chem, Vec<Chem>>) -> i64 {
     let mut rest : HashMap<String, i64> = HashMap::new();
@@ -144,7 +165,7 @@ mod test {
         assert_eq!(next_highest_multiple(15,3), 15);
     }
     #[test]
-    fn test_explode() {
+    fn test_parts() {
         let mut ex =
             "157 ORE => 5 NZVS
 165 ORE => 6 DCFZ
@@ -156,8 +177,8 @@ mod test {
 165 ORE => 2 GPVTF
 3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT";
         let mut reactions = parse(ex.lines().map(String::from).collect());
-        assert_eq!(explode(Chem::new(1,&"FUEL".to_string()), &reactions), 13312);
-
+        assert_eq!(pt1(&reactions), 13312);
+        assert_eq!(pt2(&reactions), 82892753);
 
         ex =
             "2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX => 1 STKFG
@@ -173,7 +194,8 @@ mod test {
 1 VJHF, 6 MNCFX => 4 RFSQX
 176 ORE => 6 VJHF";
         reactions = parse(ex.lines().map(String::from).collect());
-        assert_eq!(explode(Chem::new(1,&"FUEL".to_string()), &reactions), 180697 );
+        assert_eq!(pt1(&reactions), 180697);
+        assert_eq!(pt2(&reactions), 5586022 );
 
         ex =
             "171 ORE => 8 CNZTR
@@ -194,63 +216,7 @@ mod test {
 7 XCVML => 6 RJRHP
 5 BHXH, 4 VRPVC => 5 LTCX";
         reactions = parse(ex.lines().map(String::from).collect());
-        assert_eq!(explode(Chem::new(1,&"FUEL".to_string()), &reactions), 2210736);
-
-        //assert_eq!(explode(&Chem::new(2,"AB"), &reactions), vec![Chem::new(6,"A"), Chem::new(8,"B")]);
-        //assert_eq!(explode(&Chem::new(3,"A"), &reactions), vec![Chem::new(18,"ORE"), Chem::new(1,"A")]);
+        assert_eq!(pt1(&reactions), 2210736);
+        assert_eq!(pt2(&reactions), 460664  );
     }
 }
-
-
-
-/*
-fn flatten_ore(reactions: &HashMap<Chem, Vec<Chem>>) -> usize {
-    let (wanted, all_needed) = find_reaction(&"FUEL".to_string(), &reactions).unwrap();
-
-    let mut i = 0;
-    let mut needed = all_needed.clone();
-    while needed.len() > 1 {
-        let new = explode_once(&needed, true, reactions);
-        println!("=> {:?}",  new);
-        let unchanged = new.iter().all(|item| needed.contains(&item));
-        if unchanged { // unchanged
-            needed = explode_once(&new, false, reactions).clone();
-            println!("=> {:?}",  needed);
-        } else {
-            needed = new;
-        }
-        //println!("{:?}", needed);
-        if i == 100 {
-            break
-        }
-        println!();
-        i += 1;
-    }
-    println!("res => {:?}", needed);
-    needed[0].0 as usize
-}
-
-
-fn explode_once(v: &Vec<Chem>, exact: bool, reactions: &HashMap<Chem, Vec<Chem>>) -> Vec<Chem> {
-    let with_dupes = v.iter()
-        .flat_map( |need| {
-            let mut res = vec![need.clone()];
-
-            if let Some((Chem(need_react_amount, _),react)) = find_reaction(&need.1, &reactions) {
-                println!("possible reaction {:?} => {:?}", need.1, react);
-                // only resolve, when possible without loss
-                if need.0 % need_react_amount == 0 { // exact (without loss)
-                    let times = need.0 / need_react_amount;
-                    res = react.into_iter().map(move |r| Chem(r.0 * times, r.1.to_string())).collect();
-                    println!("used {:?} => {:?}", need, res);
-                } else if !exact {
-                    let times = (need.0 as f64 / need_react_amount as f64).ceil() as i64;
-                    res = react.into_iter().map(move |r| Chem(r.0 * times, r.1.to_string())).collect();
-                    println!("used {:?} => {:?}", need, res);
-                }
-            }
-            res
-        }).collect::<Vec<Chem>>();
-    flatten(&with_dupes)
-}
-*/
