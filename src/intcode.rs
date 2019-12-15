@@ -49,8 +49,11 @@ impl IntCode {
             1 => self.write_at(3, &param_modes, p1? + p2?), // add
             2 => self.write_at(3, &param_modes, p1? * p2?), // mul
             3 => { // read_in
-                let input = self.inputs.recv().unwrap();
-                self.write_at(1, &param_modes, input)
+                if let Ok(input) = self.inputs.recv() {
+                    self.write_at(1, &param_modes, input)
+                } else {
+                    return None; // channel broken up..
+                }
             },
             4 => { //write_out
                 self.output.send(p1?);
