@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use aoc2019::read_lines;
-use std::iter::successors;
 use std::cmp::Ordering;
-use std::ops::RangeInclusive;
 
 fn main() {
     let reactions = parse(read_lines(14));
@@ -21,7 +19,7 @@ fn pt2(reactions: &HashMap<Chem, Vec<Chem>>) -> i64 {
 
     let res = fuel_range.binary_search_by(|fuel| {
         let ore_needed = explode(Chem::new(*fuel, &"FUEL".to_string()), &reactions);
-        let target_range = (trillion-ore_for_one_fuel..=trillion);
+        let target_range = trillion-ore_for_one_fuel..=trillion;
         if target_range.contains(&ore_needed) { Ordering::Equal }
         else if ore_needed < *target_range.start() { Ordering::Less }
         else if *target_range.end() < ore_needed { Ordering::Greater }
@@ -72,7 +70,7 @@ fn flatten(v: &Vec<Chem>) -> Vec<Chem>{
 
 fn parse(input: Vec<String>) -> HashMap<Chem, Vec<Chem>> {
     input.iter().map(|line| {
-        let mut left_right : Vec<&str> = line.split(" => ").collect();
+        let left_right : Vec<&str> = line.split(" => ").collect();
         (parse_chem(&left_right[1].into()).remove(0), parse_chem(&left_right[0].into()))
     }).collect()
 }

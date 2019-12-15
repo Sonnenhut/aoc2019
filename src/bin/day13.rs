@@ -46,8 +46,6 @@ fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
 }
 
 fn draw(map: &HashMap<(i64,i64), i64>) {
-    //print!("\x1B[2J"); // clear
-    //io::stdout().flush();
     let max_x = *map.keys().map(|(x,_)|x).max().unwrap_or(&0);
     let max_y = *map.keys().map(|(_,y)|y).max().unwrap_or(&0);
     for y in 0..=max_y {
@@ -56,8 +54,8 @@ fn draw(map: &HashMap<(i64,i64), i64>) {
                 Some(0) => " ", // no
                 Some(1) => "█", // wall
                 Some(2) => "X", // block
-                Some(3) => "_", // paddle
-                Some(4) => "O", //ball
+                Some(3) => "=", // paddle
+                Some(4) => "*", //ball
                 _ => " "
             };
             print!("{}",v)
@@ -66,7 +64,7 @@ fn draw(map: &HashMap<(i64,i64), i64>) {
     }
     println!("\nscore: {}", score(map));
     let _ = io::stdout().flush();
-    thread::sleep(Duration::from_millis(100));
+    thread::sleep(Duration::from_millis(50));
 }
 
 fn score(map: &HashMap<(i64,i64), i64>) -> i64{
