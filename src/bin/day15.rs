@@ -20,24 +20,6 @@ struct State {
     instr: Vec<i64> // instructions to get there from 0
 }
 
-// The priority queue depends on `Ord`.
-// Explicitly implement the trait so the queue becomes a min-heap
-// instead of a max-heap.
-impl Ord for State {
-    fn cmp(&self, other: &State) -> Ordering {
-        // Notice that the we flip the ordering on costs.
-        // In case of a tie we compare positions - this step is necessary
-        // to make implementations of `PartialEq` and `Ord` consistent.
-        other.cost.cmp(&self.cost)
-            .then_with(|| self.position.cmp(&other.position))
-    }
-}
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &State) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
 struct Coord {
     x: isize,
@@ -71,28 +53,23 @@ fn shortest_path(initial_position: &Vec<i64>, mem: &Vec<i64>) -> (Option<Vec<i64
     let start = Coord{x:0, y:0};
     let max : usize = 999999999999999999;
     let mut dist: HashMap<Coord, usize> = HashMap::new();
-    let mut heap = BinaryHeap::new();
-    let mut wall : HashSet<Coord> = HashSet::new(); //TODO i dont think this is a performance increase...
+    let mut stack = vec![];
 
-    // We're at `start`, with a zero cost
     dist.insert(start.clone(), 0);
-    heap.push(State { cost: 0, position: start.clone(), instr: vec![] });
+    stack.push(State { cost: 0, position: start.clone(), instr: vec![] });
 
-    let mut i = 0;
     let mut robot = Robot::new(&initial_position, &mem);
-    //TODO maybe just look at the last pushed elements (stack.pop()) without binaryHeap
     let mut oxy_system : Option<Vec<i64>> = None;
-    while let Some(State { cost, position, instr }) = heap.pop() {
-        // Ignore, there is a better way
+
+    while let Some(State { cost, position, instr }) = stack.pop() {
+        // Already got a better way, ignore
         if cost > *dist.get(&position).unwrap_or(&max) { continue; }
 
         let robot_res = robot.run(&instr);
         let res = robot_res;
         if res == 0 {
-            dist.remove(&position); // forget about walls!
-            continue; // hit a wall, ignore it
-        } else if res == 1 {
-            // all good!
+            dist.remove(&position); // forget distances to walls
+            continue;
         } else if res == 2 {
             oxy_system = Some(instr.clone());// found the oxygen system!
         }
@@ -104,7 +81,7 @@ fn shortest_path(initial_position: &Vec<i64>, mem: &Vec<i64>) -> (Option<Vec<i64
             let next = State { cost: cost + 1, position: next_coord, instr: [instr.clone(), vec![dir]].concat().to_vec()};
 
             if next.cost < *dist.get(&next.position).unwrap_or(&max) {
-                heap.push(next.clone());
+                stack.push(next.clone());
                 // faster path found
                 dist.insert(next.position.clone(), next.cost);
             }
@@ -114,12 +91,12 @@ fn shortest_path(initial_position: &Vec<i64>, mem: &Vec<i64>) -> (Option<Vec<i64
     (oxy_system, *furthest_distance)
 }
 
-
 struct Robot {
     instr: Vec<i64>,
     send: Sender<i64>,
     recv: Receiver<i64>
 }
+
 impl Robot { // utility to reuse IntCode and not rerun every time...
     fn new(initial_location: &Vec<i64>, mem: &Vec<i64>) -> Robot {
         let (send,recv) = IntCode::run_async(&mem);
@@ -163,13 +140,6 @@ impl Robot { // utility to reuse IntCode and not rerun every time...
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
-struct Chem {amount: i64, name: String}
-
-impl Chem {
-    fn new(amount: i64, name: &str) -> Chem { Chem {amount, name: name.to_string()} }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -188,6 +158,7 @@ mod test {
     fn test_find() {
         let mem: Vec<i64> = read_lines(15)[0].split(',').map(|s| s.parse().unwrap()).collect();
         assert_eq!(pt1(&mem), 336);
+        assert_eq!(pt2(&mem), 360);
     }
     #[test]
     fn test_slice() {
