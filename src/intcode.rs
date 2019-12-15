@@ -1,14 +1,12 @@
-use std::sync::mpsc::{Sender, Receiver, channel, sync_channel};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread;
-use std::convert::TryInto;
 
 impl IntCode {
     pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode {
-        let mem_copy = mem.to_vec();
         let (send_in, recv_in) = channel();
-        let (send_out, recv_out) = channel();
+        let (send_out, _) = channel();
         for input in inputs {
-            send_in.send(*input);
+            let _ = send_in.send(*input);
         }
         IntCode {inputs: recv_in, csr: Some(0), mem: mem.clone(), output:send_out, base: 0}
     }
@@ -28,7 +26,7 @@ impl IntCode {
     pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> Vec<i64> {
         let (send_in, recv_out) = IntCode::run_async(mem);
         for input in inputs {
-            send_in.send(*input);
+            let _ = send_in.send(*input);
         }
         recv_out.iter().collect()
     }
@@ -56,7 +54,7 @@ impl IntCode {
                 }
             },
             4 => { //write_out
-                self.output.send(p1?);
+                let _ =self.output.send(p1?);
                 Some(csr + 2)
             },
             5 => if p1? != 0 { Some(p2? as usize) } else { Some(csr + 3) }, // jump-if-true
@@ -103,7 +101,7 @@ impl IntCode {
             // get at csr
             val_at_csr
         } else if mode == 1 {
-            None // no csr, is immediate (also: outputs should never go to immediate)
+            None // does not support immediate mode, users should take care of that on their own when None is specified
         } else if mode == 2 {
             // get at base + csr
             val_at_csr.map(|c| (self.base + c))
