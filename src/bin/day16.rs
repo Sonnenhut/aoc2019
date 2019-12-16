@@ -51,34 +51,26 @@ fn fft(n: &String, phase_cnt: usize) -> String{
 
     let patterns : Vec<Vec<i32>> = (0..seq.len())
         .map(|i| {
-            base_pattern.iter()
+            let pattern : Vec<i32> = base_pattern.iter()
                 .flat_map(|x| {
                     repeat(*x).take(i + 1).collect::<Vec<i32>>()
                 })
-                .collect()
-        }).collect();
-
-
+                .cycle().take(seq.len()+1)
+                .collect();
+            pattern[1..].to_vec()
+        })
+        .collect();
 
     let mut out_list: Vec<i32> = seq.clone();
     for _ in 0..phase_cnt {
-        let start = Instant::now();
         for i in 0..out_list.len() {
-            //let mut pattern = &patterns[i].iter().collect::<Vec<_>>();
-            //println!("seq     is {:?}", out_list);
-            //println!("pattern is {:?}", pattern);
-            let out_raw : i32 = out_list.iter().zip((&patterns[i]).iter().cycle().skip(1))
+            let out_raw : i32 = out_list.iter().zip(patterns[i].iter())
                 .filter(|(lhs,rhs)| **lhs != 0 && **rhs != 0)
                 .map(|(lhs,rhs)| lhs * rhs)
                 .sum();
             let out = (out_raw % 10).abs();
             out_list[i] = out;
-            //println!("[{}] is {:?}", i, out);
-            //out_list.push(out);//[i] = out;
         }
-        println!("duration for one loop {:?} for numbers {}", start.elapsed(), out_list.len());
-        //println!("phase complete {:?}", out_list);
-        //seq = out_list
     }
     let str_res : Vec<String> = out_list.iter().map(|x| x.to_string()).collect();
     str_res.concat()
