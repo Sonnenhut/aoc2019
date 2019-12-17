@@ -55,7 +55,6 @@ fn alignment_sum(nums: &Vec<i64>) -> usize {
     for (y,line) in lines.iter().enumerate() {
         for (x, n) in line.iter().enumerate() {
             if *n == 35 && around(x,y,&lines).iter().all(|other_n| *other_n == 35) {
-                //println!("{} {}", x,y);
                 sum += x * y;
             }
         }
