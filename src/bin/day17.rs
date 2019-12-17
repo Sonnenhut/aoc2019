@@ -7,6 +7,7 @@ fn main() {
     println!("pt2: {}", pt2(&mem)); // 1103905
 }
 
+// solved by printing it out and solving by hand (as many others did...)
 fn pt2(intcode_mem: &Vec<i64>) -> usize {
     let mut modified_mem = intcode_mem.to_vec();
     modified_mem[0] = 2;
