@@ -98,7 +98,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let mut ex =
+        let ex =
             "10 ORE => 10 A
 1 ORE => 1 B
 7 A, 1 B => 1 C
@@ -134,14 +134,14 @@ mod test {
 
     #[test]
     fn test_simple_ex() {
-        let mut ex =
+        let ex =
             "10 ORE => 10 A
 1 ORE => 1 B
 7 A, 1 B => 1 C
 7 A, 1 C => 1 D
 7 A, 1 D => 1 E
 7 A, 1 E => 1 FUEL";
-        let mut reactions = parse(ex.lines().map(String::from).collect());
+        let reactions = parse(ex.lines().map(String::from).collect());
         assert_eq!(pt1(&reactions), 31);
     }
 

@@ -1,20 +1,36 @@
 use aoc2019::read_lines;
-use std::iter::repeat;
-use std::ops::Sub;
 use aoc2019::intcode::IntCode;
-use std::time::Duration;
 
 fn main() {
     let mem: Vec<i64> = read_lines(17)[0].split(',').map(|s| s.parse().unwrap()).collect();
     println!("pt1: {}", pt1(&mem)); // 6680
-    //println!("pt2: {}", pt2(&input)); //
+    println!("pt2: {}", pt2(&mem)); // 1103905
 
 }
 
+fn pt2(intcode_mem: &Vec<i64>) -> usize {
+    let mut modified_mem = intcode_mem.to_vec();
+    modified_mem[0] = 2;
+    let (i,o) = IntCode::run_async(&modified_mem);
+
+    let movement = "A,B,A,C,C,A,B,C,B,B";
+    let a = "L,8,R,10,L,8,R,8";
+    let b = "L,12,R,8,R,8";
+    let c = "L,8,R,6,R,6,R,10,L,8";
+    let use_vid = "n";
+    let instr = format!("{}\n{}\n{}\n{}\n{}\n", movement,a,b,c,use_vid);
+    for input in instr.chars() {
+        let _ = i.send(input as i64);
+    }
+
+    let output : Vec<i64> = o.iter().collect();
+    *output.last().unwrap() as usize
+}
+
 fn pt1(intcode_mem: &Vec<i64>) -> usize {
-    let (i,o) = IntCode::run_async(&intcode_mem);
-    let mut map = o.iter().collect();
-    //draw(&map);
+    let (_,o) = IntCode::run_async(&intcode_mem);
+    let map = o.iter().collect();
+    draw(&map);
     alignment_sum(&map)
 }
 
@@ -74,8 +90,14 @@ mod test {
 
     #[test]
     fn test_regression() {
-        //let input = &read_lines(16)[0];
-        //assert_eq!(pt1(&input), "22122816");
+        let mem: Vec<i64> = read_lines(17)[0].split(',').map(|s| s.parse().unwrap()).collect();
+        assert_eq!(pt1(&mem), 6680);
+        assert_eq!(pt2(&mem),1103905);
+    }
+    #[test]
+    fn test() {
+        let mem: Vec<i64> = read_lines(17)[0].split(',').map(|s| s.parse().unwrap()).collect();
+        pt2(&mem);
     }
     #[test]
     fn test_ex() {
