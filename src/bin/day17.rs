@@ -5,7 +5,6 @@ fn main() {
     let mem: Vec<i64> = read_lines(17)[0].split(',').map(|s| s.parse().unwrap()).collect();
     println!("pt1: {}", pt1(&mem)); // 6680
     println!("pt2: {}", pt2(&mem)); // 1103905
-
 }
 
 fn pt2(intcode_mem: &Vec<i64>) -> usize {
