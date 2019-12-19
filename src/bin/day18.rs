@@ -32,14 +32,16 @@ fn main() {
 struct State {
     steps: usize,
     position: Coord,
-    collected_keys: Vec<char>
+//    collected_keys: Vec<char>
 }
 
 impl Ord for State {
     fn cmp(&self, other: &State) -> Ordering {
-        other.collected_keys.len().cmp(&self.collected_keys.len())
-            .then_with(|| other.steps.cmp(&self.steps))
+        other.steps.cmp(&self.steps)
             .then_with(|| self.position.cmp(&other.position))
+//        other.collected_keys.len().cmp(&self.collected_keys.len())
+//            .then_with(|| other.steps.cmp(&self.steps))
+//            .then_with(|| self.position.cmp(&other.position))
     }
 }
 
@@ -48,6 +50,7 @@ impl PartialOrd for State {
         Some(self.cmp(other))
     }
 }
+
 
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
 struct Coord {
@@ -98,11 +101,13 @@ fn path_to(start: &Coord, goal: &Coord, maze : &Vec<String>) -> Vec<Coord> {
     let mut prev : HashMap<Coord, Coord> = HashMap::new();
     let mut heap : BinaryHeap<State> = BinaryHeap::new();
 
-    heap.push(State { steps: 0, position: start.clone(), collected_keys: vec![] });
+
+    dist.insert(start.clone(), 0);
+    heap.push(State { steps: 0, position: start.clone() /*, collected_keys: vec![] */ });
 
     let mut last = Some(0);
     //println!("before loop");
-    while let Some(State { steps: steps, position, collected_keys }) = heap.pop() {
+    while let Some(State { steps: steps, position /*, collected_keys */ }) = heap.pop() {
         let char_at = at_coord(&position, &maze);
         if char_at == '#' {
             prev.remove(&position);
@@ -116,7 +121,7 @@ fn path_to(start: &Coord, goal: &Coord, maze : &Vec<String>) -> Vec<Coord> {
             break; }
         // Check all neighbors from the current cursor
         for next_position in position.around() {
-            let next = State { steps: steps + 1, position: next_position.clone(), collected_keys: collected_keys.clone()};
+            let next = State { steps: steps + 1, position: next_position.clone()/*, collected_keys: collected_keys.clone()*/};
             if next.steps < *dist.get(&next_position).unwrap_or(&max) {
                 println!("updating position prev {:?} {:?}", next_position, position);
                 dist.insert(next_position.clone(), next.steps);
@@ -132,6 +137,7 @@ fn path_to(start: &Coord, goal: &Coord, maze : &Vec<String>) -> Vec<Coord> {
     let mut i = 0;
     while let Some(path_part) = prev.get(&csr) {
         csr = path_part.clone();
+        println!("{:?}", csr);
         path.push(path_part.clone());
 
         if i == 20 {
