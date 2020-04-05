@@ -55,7 +55,6 @@ impl PartialOrd for State {
 
 fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: bool) -> Option<usize> {
     let shortcuts = connected_portals(maze);
-    println!("portals {:?}", shortcuts);
     let mut dist : HashMap<Edge, usize> = HashMap::new();
     let mut prev : HashMap<Edge, Edge> = HashMap::new();
     let mut heap = BinaryHeap::new();
