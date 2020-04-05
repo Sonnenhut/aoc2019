@@ -14,15 +14,15 @@ const GOAL_NAME: &str = "ZZ";
 fn main() {
     let mem: Vec<String> = read_lines(20);
     println!("pt1: {}", pt1(&mem)); // 498
-    //println!("pt2: {}", pt2(&mem)); //
+    println!("pt2: {}", pt2(&mem)); // 5564
 }
 
 fn pt1(maze: &Vec<String>) -> usize {
-    let (start, goal) = startAndGoal(maze);
+    let (start, goal) = start_and_goal(maze);
     shortest_path(&maze, start, goal, false).unwrap()
 }
 fn pt2(maze: &Vec<String>) -> usize {
-    let (start, goal) = startAndGoal(maze);
+    let (start, goal) = start_and_goal(maze);
     shortest_path(&maze, start, goal, true).unwrap()
 }
 
@@ -56,29 +56,16 @@ impl PartialOrd for State {
 fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: bool) -> Option<usize> {
     let shortcuts = connected_portals(maze);
     println!("portals {:?}", shortcuts);
-    // dist[node] = current shortest distance from `start` to `node`
     let mut dist : HashMap<Edge, usize> = HashMap::new();
     let mut prev : HashMap<Edge, Edge> = HashMap::new();
     let mut heap = BinaryHeap::new();
 
-    // We're at `start`, with a zero cost
     dist.insert(Edge{position: start.clone(), level: 0},0);
     heap.push(State { cost: 0, edge: Edge{position: start, level: 0} });
 
     while let Some(State { cost, edge}) = heap.pop() {
         let Edge {position, level} = edge.clone();
-        //println!("level/cost {:?}/{:?}", level, cost);
-        if position == goal && level == 0 {
-            //println!("{:?}", prev);
-            let mut i = 0;
-            while let Some(previous_edge) = prev.get(&edge.clone()) {
-                println!("{:?}", previous_edge);
-                i +=1;
-                if i > 300 {
-                    break;
-                }
-             }
-            return Some(cost); }
+        if position == goal && level == 0 { return Some(cost); }
 
         if cost > dist[&edge] { continue; }
 
@@ -87,10 +74,13 @@ fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: boo
             .zip(repeat(level))
             .collect(); // neighbors on same level
         if let Some(portal_buddy) = shortcuts.get(&position) {
-            //println!("portal on edge? {:?} => {:?}", portal_buddy, is_at_outer_edge(portal_buddy,maze));
-            let mut new_lvl = if is_at_outer_edge(portal_buddy,maze) { level.checked_sub(1) } else { level.checked_add(1) };
-            new_lvl = if with_levels {new_lvl} else {Some(level)};
-            if let Some(lvl) = new_lvl { // otherwise, there is something wrong here... (-1 lvl is not possible)
+            let mut new_lvl = if is_at_outer_edge(&position,maze) {
+                if level == 0 { None/* cannot use outer portal on lvl 0 */ } else { level.checked_sub(1) }
+            } else {
+                level.checked_add(1)
+            };
+            new_lvl = if with_levels { new_lvl } else { Some(level) };
+            if let Some(lvl) = new_lvl {
                 possible_neighbors.push((portal_buddy.clone(), lvl));
             }
         }
@@ -99,7 +89,7 @@ fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: boo
             if next.cost < *dist.get(&next.edge).unwrap_or(&usize::max_value()) {
                 heap.push(next.clone());
                 dist.insert(next.edge.clone(), next.cost);
-                prev.insert(next.edge, edge.clone());
+                prev.insert(next.edge.clone(), edge.clone());
             }
         }
     }
@@ -119,7 +109,7 @@ fn at_coord(coord: &Coord, maze: &Vec<String>) -> Option<char> {
 }
 
 fn portals(maze: &Vec<String>) -> Vec<(String, Coord)> {
-    _portal_parts(maze).iter()
+    portal_parts(maze).iter()
         .filter_map(|c|  {
             let surroundings = around(c,maze);
             let portal = surroundings.iter()
@@ -140,7 +130,7 @@ fn portals(maze: &Vec<String>) -> Vec<(String, Coord)> {
         ).collect()
 }
 
-fn _portal_parts(maze: &Vec<String>) -> Vec<Coord> {
+fn portal_parts(maze: &Vec<String>) -> Vec<Coord> {
     maze.iter()
         .enumerate()
         .flat_map(|(y,row)| {
@@ -152,7 +142,7 @@ fn _portal_parts(maze: &Vec<String>) -> Vec<Coord> {
         .collect()
 }
 
-fn startAndGoal(maze: &Vec<String>) -> (Coord, Coord) {
+fn start_and_goal(maze: &Vec<String>) -> (Coord, Coord) {
     let portals: Vec<(String, Coord)> = portals(maze);
     let start = portals.iter().filter(|t| &t.0 == START_NAME).nth(0).unwrap().1.clone();
     let goal = portals.iter().filter(|t| &t.0 == GOAL_NAME).nth(0).unwrap().1.clone();
@@ -206,13 +196,12 @@ fn is_at_outer_edge(c: &Coord, maze: &Vec<String>) -> bool {
 mod test {
     use super::*;
 
-
     #[test]
     fn regression() {
         let mem: Vec<String> = read_lines(20);
-        assert_eq!(pt1(&mem), 498); // 498
+        assert_eq!(pt1(&mem), 498);
+        assert_eq!(pt2(&mem), 5564);
     }
-
 
     #[test]
     fn ex2() {
@@ -255,7 +244,21 @@ RE....#.#                           #......RF
                A O F   N
                A A D   M                     ";
         let mut maze = ex.split('\n').map(String::from).collect();
-        assert_eq!(pt2(&maze), 396)
+        assert_eq!(connected_portals(&maze).contains_key(&Coord{x:13,y:3}), false); // ZZ not connected
+
+        assert_eq!(pt2(&maze), 396);
+    }
+
+    #[test]
+    fn test_connected_portals() {
+        let maze: Vec<String> = read_lines(20);
+        assert_eq!(connected_portals(&maze)[&Coord{x:39,y:2}], Coord{x:26,y:61}); // SS is found
+        assert_eq!(connected_portals(&maze)[&Coord{x:26,y:61}], Coord{x:39,y:2});
+
+        let expected_portal_len = 29+27-2;
+        assert_eq!(connected_portals(&maze).keys().len(), expected_portal_len);
+        let mut unique_portals : HashSet<Coord> = connected_portals(&maze).keys().cloned().collect();
+        assert_eq!(unique_portals.len(), expected_portal_len);
     }
 
     #[test]
@@ -281,27 +284,30 @@ FG..#########.....#
              Z
              Z       ";
         let mut maze = ex.split('\n').map(String::from).collect();
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:0,y:6},&maze), true); // left
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:1,y:6},&maze), true); // left
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:2,y:6},&maze), true); // left
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:3,y:6},&maze), false); // not left
+        assert_eq!(is_at_outer_edge(&Coord{x:0,y:6},&maze), true); // left
+        assert_eq!(is_at_outer_edge(&Coord{x:1,y:6},&maze), true); // left
+        assert_eq!(is_at_outer_edge(&Coord{x:2,y:6},&maze), true); // left
+        assert_eq!(is_at_outer_edge(&Coord{x:3,y:6},&maze), false); // not left
 
 
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:20,y:6},&maze), true); // right
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:18,y:6},&maze), true); // right
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:17,y:6},&maze), true); // right
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:16,y:6},&maze), false); // not right
+        assert_eq!(is_at_outer_edge(&Coord{x:20,y:6},&maze), true); // right
+        assert_eq!(is_at_outer_edge(&Coord{x:18,y:6},&maze), true); // right
+        assert_eq!(is_at_outer_edge(&Coord{x:17,y:6},&maze), true); // right
+        assert_eq!(is_at_outer_edge(&Coord{x:16,y:6},&maze), false); // not right
 
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:5,y:18},&maze), true); // bottom
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:5,y:17},&maze), true); // bottom
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:5,y:16},&maze), true); // bottom
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:5,y:15},&maze), true); // not bottom
+        assert_eq!(is_at_outer_edge(&Coord{x:5,y:18},&maze), true); // bottom
+        assert_eq!(is_at_outer_edge(&Coord{x:5,y:17},&maze), true); // bottom
+        assert_eq!(is_at_outer_edge(&Coord{x:5,y:16},&maze), true); // bottom
+        assert_eq!(is_at_outer_edge(&Coord{x:5,y:15},&maze), true); // not bottom
 
 
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:0,y:6},&maze), true); // top
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:1,y:6},&maze), true); // top
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:2,y:6},&maze), true); // top
-        debug_assert_eq!(is_at_outer_edge(&Coord{x:3,y:6},&maze), false); // not top
+        assert_eq!(is_at_outer_edge(&Coord{x:0,y:6},&maze), true); // top
+        assert_eq!(is_at_outer_edge(&Coord{x:1,y:6},&maze), true); // top
+        assert_eq!(is_at_outer_edge(&Coord{x:2,y:6},&maze), true); // top
+        assert_eq!(is_at_outer_edge(&Coord{x:3,y:6},&maze), false); // not top
+
+
+        assert_eq!(is_at_outer_edge(&Coord{x:9,y:6},&maze), false); // somewhere at center
     }
 
     #[test]
