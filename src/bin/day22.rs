@@ -7,43 +7,24 @@ use std::path::Iter;
 use std::convert::TryInto;
 
 use std::iter;
-use std::ops::Sub;
+use std::ops::{Sub, RemAssign};
 use std::fmt::DebugTuple;
 
 fn main() {
     let instr = read_lines(22);
     println!("pt1: {}", pt1(&instr)); // 6526
-    println!("pt2: {}", pt2(&instr)); // 1141066762
+    println!("pt2: {}", pt2(&instr)); //
 }
 
 fn pt1(instr: &Vec<String>) -> usize {
-    apply_all(&instr, &deck(10007)).iter().position(|v| *v == 2019usize).unwrap()
+    apply_all(&instr, &deck(10007)).iter().position(|v| *v == 2019usize).unwrap();
+    resulting_idx_of_card(instr, 10007, 2019)
 }
 
 fn pt2(instr: &Vec<String>) -> usize {
     let deck_size: usize = 119315717514047;
     let iterations: usize = 101741582076661;
-    println!("hashset");
-    let mut known_combos = HashSet::new();
-
-    let mut ldeck: LinkedList<usize> = LinkedList::new();
-    for c in 0..deck_size {
-        ldeck.push_back(c);
-    }
-
-    println!("test end");
-    let mut changed = deck(deck_size);
-    println!("initial deck");
-    known_combos.insert(changed.clone());
-    for i in 0..iterations {
-        changed = apply_all(instr, &changed);
-        //println!("loop {}",i);
-        if !known_combos.insert(changed.clone()) {
-            //panic!("found repeat at loop {}", i)
-        }
-    }
-
-    apply_all(&instr, &deck(10007)).iter().position(|v| *v == 2019usize).unwrap()
+    card_at_idx(instr,iterations, deck_size, 2020)
 }
 
 fn apply_all(instr: &Vec<String>, initial_deck: &Vec<usize>) -> Vec<usize>{
@@ -86,15 +67,96 @@ fn apply_single(instr: &String, deck: &Vec<usize>) -> Vec<usize> {
     } else { panic!("unknown instruction...") }
 }
 
-fn combine_lcf(first: (isize, isize), second: (isize,isize)) -> (isize,isize) {
+fn card_at_idx(instr: &Vec<String>, loops: usize, deck_size: usize, idx: usize) -> usize {
+    // calculates what card is at the specified index after shuffling
+    let mut lcf = composite_lcf(instr, deck_size);
+    lcf = pow_composite(lcf, loops, deck_size);
+    exec_lcf_inverted(idx, lcf,deck_size)
+}
+
+fn resulting_idx_of_card(instr: &Vec<String>, deck_size: usize, idx: usize) -> usize {
+    // this calculates what position the card at idx will end up in
+    let lcf = composite_lcf(instr, deck_size);
+    println!("resulting lcf {:?}", lcf);
+    println!("executed lcf {:?}", exec_lcf(idx, lcf, deck_size));
+    exec_lcf(idx, lcf, deck_size)
+}
+
+// method 1
+fn exec_lcf_k(k: u32, x: usize, ab: (isize, isize), modulo: usize) -> usize {
+    // whereas k is the amount of loops to be executed
+    let (a,b) = ab;
+    let x_isize = x as isize;
+    let modulo_isize = modulo as isize;
+    // f(x) = ax+b mod m
+    ((a.pow(k) * x_isize) + ((b * (1 - a.pow(k))) / (1-a))).checked_rem_euclid(modulo_isize).unwrap() as usize
+}
+
+// method 2
+fn pow_composite(f_init: (isize, isize), k: usize, modulo: usize) -> (isize, isize) {
+    let mut g = (1,0);
+    let mut f = f_init;
+    let mut curr_k = k;
+    while curr_k > 0 {
+        if curr_k % 2 == 1 { // is odd
+            g = combine_lcf(modulo, g, f)
+        }
+        curr_k = curr_k / 2;
+        f = combine_lcf(modulo, f, f)
+    }
+    g
+}
+
+
+fn exec_lcf_inverted(x: usize, ab: (isize, isize), modulo: usize) -> usize {
+    let (a,b) = ab;
+    let x_isize = x as isize;
+    let modulo_isize = modulo as isize;
+    // use modulus, not remainder (to work with negative values... see modulo vs remainder)
+    // f(x) = ax+b mod m
+    (((x_isize - b) / a).checked_rem_euclid(modulo_isize)).unwrap() as usize
+}
+fn exec_lcf(x: usize, ab: (isize, isize), modulo: usize) -> usize {
+    let (a,b) = ab;
+    let x_isize = x as isize;
+    let modulo_isize = modulo as isize;
+    // use modulus, not remainder (to work with negative values... see modulo vs remainder)
+    // f(x) = ax+b mod m
+    ((a * x_isize + b).checked_rem_euclid(modulo_isize)).unwrap() as usize
+}
+
+fn composite_lcf(instructions: &Vec<String>, modulo: usize) -> (isize, isize) {
+    let lcf_instructions : Vec<(isize,isize)> = instructions.iter().map(|instr| {
+        if instr.starts_with("deal into new stack") {
+            lcf_deal()
+        } else if instr.starts_with("deal with increment ") {
+            let inc = instr.split(" ").last().unwrap().parse().unwrap();
+            lcf_inc(inc)
+        } else if instr.starts_with("cut") {
+            let cut = instr.split(" ").last().unwrap().parse().unwrap();
+            lcf_cut(cut)
+        } else { panic!("unknown instruction...") }
+    }).collect();
+    println!("instructions {:?}", lcf_instructions);
+    let first_instr = *lcf_instructions.first().unwrap();
+    lcf_instructions.iter().skip(1).fold(first_instr, |f, s| combine_lcf(modulo, f, *s))
+}
+
+
+//https://codeforces.com/blog/entry/72593
+fn lcf_deal() -> (isize, isize) { (-1, -1) }
+fn lcf_cut(n: isize) -> (isize, isize) { (1, n * -1)}
+fn lcf_inc(n: isize) -> (isize, isize) { (n, 0)}
+
+fn combine_lcf(modulo: usize, first: (isize, isize), second: (isize,isize)) -> (isize, isize) {
     //https://www.reddit.com/r/adventofcode/comments/eh1d6p/2019_day_22_part_2_tutorial/
     //https://codeforces.com/blog/entry/72593
     let (a,b) = first;
     let (c,d) = second;
-
+    let mod_isize = modulo as isize;
+    println!("{} * {} mod {}, {} * {} + {} mod {}",a,c,modulo,b,c,d,modulo);
+    ((a*c).checked_rem_euclid(mod_isize).unwrap(), ((b*c) + d).checked_rem_euclid(mod_isize).unwrap())
 }
-
-
 
 /*
 // --- pt2 reverse the instructions because we know what card no to look at in the end
@@ -143,6 +205,34 @@ mod test {
         assert_eq!(apply_all(&vec![String::from("deal with increment 3")], &deck(10)), vec![0,7,4,1,8,5,2,9,6,3]);
 
         assert_eq!(apply_all(&vec![String::from("cut -4")], &deck(10)), vec![6,7,8,9,0,1,2,3,4,5]);
+    }
+    #[test]
+    fn test_lcf() {
+        // vec![3,4,5,6,7,8,9,0,1,2]
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 0), 7);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 1), 8);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 2), 9);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 3), 0);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 4), 1);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 5), 2);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 6), 3);
+        assert_eq!(resulting_idx_of_card(&vec![String::from("cut 3")], 10, 7), 4);
+        // .. and so on
+
+        let mut instr_vec = r#"deal with increment 7
+deal into new stack
+deal into new stack"#.split("\n").map(|s|String::from(s)).collect();
+        // vec![0,3,6,9,2,5,8,1,4,7]
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 0), 0);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 3), 1);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 6), 2);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 9), 3);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 2), 4);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 5), 5);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 8), 6);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 1), 7);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 4), 8);
+        assert_eq!(resulting_idx_of_card(&instr_vec, 10, 7), 9);
     }
     #[test]
     fn test_instructions() {
