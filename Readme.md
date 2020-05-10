@@ -30,6 +30,7 @@ Attempt to solve aoc2019 in rust.
 
 [split_at_mut, when borrowing mutliple elements in a vec things get weird (see day 12 "step" fn)](https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut)
 
+[I am no maths guy...](https://www.reddit.com/r/adventofcode/comments/engeuy/2019_day_22_part_2_i_have_no_idea_where_to_start/)
 
 ---
 ###### Ownership
