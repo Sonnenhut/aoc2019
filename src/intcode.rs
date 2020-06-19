@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{Sender, Receiver, channel, SyncSender, sync_channel};
 use std::thread;
 
 impl IntCode {
@@ -13,6 +13,16 @@ impl IntCode {
     pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<i64>) {
         let mem_copy = mem.to_vec();
         let (send_in, recv_in) = channel();
+        let (send_out, recv_out) = channel();
+        thread::spawn(move || {
+            let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0};
+            int_code.run()
+        });
+        (send_in, recv_out)
+    }
+    pub fn run_sync(mem: &Vec<i64>) -> (SyncSender<i64>, Receiver<i64>) {
+        let mem_copy = mem.to_vec();
+        let (send_in, recv_in) = sync_channel(0);
         let (send_out, recv_out) = channel();
         thread::spawn(move || {
             let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0};
