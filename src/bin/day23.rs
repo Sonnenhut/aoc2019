@@ -22,7 +22,7 @@ fn main() {
 
 fn pt1(mem: &Vec<i64>) -> i64 {
     let computers : Vec<Computer>= (0..50)
-        .map(|network_id| IntCode::run_sync(mem))
+        .map(|network_id| IntCode::run_async(mem))
         .map(|(snd, rcv)| Computer{snd, rcv})
         .collect();
 
@@ -67,13 +67,13 @@ fn pt1(mem: &Vec<i64>) -> i64 {
 
 fn pt2(mem: &Vec<i64>) -> i64 {
     let computers : Vec<Computer>= (0..50)
-        .map(|network_id| IntCode::run_sync(mem))
+        .map(|network_id| IntCode::run_async(mem))
         .map(|(snd, rcv)| Computer{snd, rcv})
         .collect();
 
     computers.iter().enumerate().for_each(|(i,c)| c.snd.send(i as i64).unwrap());
 
-    let mut nat_y_values = vec![];
+    let mut nat_deliveries = vec![];
     let mut nat_payload : Option<(i64,i64)> = None;
     let mut nat_looped = false;
     let mut consecutive_idle = 0;
@@ -85,16 +85,11 @@ fn pt2(mem: &Vec<i64>) -> i64 {
             match c.rcv.try_recv().ok() {
                 Some(dest_addr) => {
                     println!("#{:?} sending to {:?}", i, dest_addr);
-                    let x = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
-                    let y = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
+                    let x = c.rcv.recv_timeout(Duration::from_millis(1)).ok().unwrap();
+                    let y = c.rcv.recv_timeout(Duration::from_millis(1)).ok().unwrap();
                     println!("X={:?}", x);
                     println!("Y={:?}", y);
                     if dest_addr == 255 {
-                        if nat_y_values.contains(&y) {
-                            println!("NAT looped with value: {:?}", y);
-                            nat_looped = true;
-                        }
-                        nat_y_values.push(y);
                         nat_payload = Some((x,y));
                     } else {
                         computers[dest_addr as usize].snd.send(x);
@@ -111,26 +106,38 @@ fn pt2(mem: &Vec<i64>) -> i64 {
             computers[0].snd.send(x);
             computers[0].snd.send(y);
             consecutive_idle = 0;
+            if nat_deliveries.last().is_some() && nat_deliveries.last().unwrap() == &y {
+                println!("NAT looped with value: {:?}", y);
+                nat_looped = true;
+            } else {
+                nat_deliveries.push(y) // sent to #0
+            }
         } else {
             consecutive_idle = if accessed_addr.is_empty() { consecutive_idle + 1} else { 0 };
             // snd -1 to everyone that did not receive anything
-            computers.iter().enumerate()
-                .filter(|(i, c)| !accessed_addr.contains(&(*i as i64)))
-                .for_each(|(i, c)| {
-                    c.snd.send(-1).unwrap();
-                });
+
+            for _ in 0..100 {
+                computers.iter().enumerate()
+                    //.filter(|(i, c)| !accessed_addr.contains(&(*i as i64)))
+                    .for_each(|(i, c)| {
+                        c.snd.send(-1).unwrap();
+                    });
+            }
         };
 
         loop_cnt += 1;
         //12384 // nosleep; idle = 2000
-        //std::thread::sleep(Duration::from_millis(500));
+        //12376 -> NOT
+        //12326!!!!!
+        //17949 -> NOT
+        std::thread::sleep(Duration::from_millis(100));
     }
 
-    *nat_y_values.last().unwrap()
+    *nat_deliveries.last().unwrap()
 }
 
 struct Computer {
-    snd : SyncSender<i64>,
+    snd : Sender<i64>,
     rcv : Receiver<i64>
 }
 

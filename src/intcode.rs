@@ -20,16 +20,6 @@ impl IntCode {
         });
         (send_in, recv_out)
     }
-    pub fn run_sync(mem: &Vec<i64>) -> (SyncSender<i64>, Receiver<i64>) {
-        let mem_copy = mem.to_vec();
-        let (send_in, recv_in) = sync_channel(0);
-        let (send_out, recv_out) = channel();
-        thread::spawn(move || {
-            let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0};
-            int_code.run()
-        });
-        (send_in, recv_out)
-    }
     pub fn resolve_single(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
         *IntCode::resolve(&inputs, &mem).last().unwrap()
     }
