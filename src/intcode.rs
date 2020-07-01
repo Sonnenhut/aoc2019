@@ -1,5 +1,6 @@
 use std::sync::mpsc::{Sender, Receiver, channel, SyncSender, sync_channel};
 use std::thread;
+use std::sync::{Mutex, Arc};
 
 impl IntCode {
     pub fn create(inputs: &Vec<i64>, mem: &Vec<i64>) -> IntCode {
@@ -8,27 +9,29 @@ impl IntCode {
         for input in inputs {
             let _ = send_in.send(*input);
         }
-        IntCode {inputs: recv_in, csr: Some(0), mem: mem.clone(), output:send_out, base: 0}
+        IntCode {inputs: recv_in, csr: Some(0), mem: mem.clone(), output:send_out, base: 0, idle: Arc::new(Mutex::new(false))}
     }
-    pub fn run_async(mem: &Vec<i64>) -> (Sender<i64>, Receiver<i64>) {
+    pub fn run_async(mem: &Vec<i64>) -> IntCodeClient {
         let mem_copy = mem.to_vec();
         let (send_in, recv_in) = channel();
         let (send_out, recv_out) = channel();
+        let idle = Arc::new(Mutex::new(false));
+        let idle_clone = Arc::clone(&idle);
         thread::spawn(move || {
-            let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0};
+            let mut int_code = IntCode {inputs: recv_in, csr: Some(0), mem: mem_copy, output: send_out, base: 0, idle: idle_clone};
             int_code.run()
         });
-        (send_in, recv_out)
+        IntCodeClient { snd: send_in, rcv: recv_out, idle}
     }
     pub fn resolve_single(inputs: &Vec<i64>, mem: &Vec<i64>) -> i64 {
         *IntCode::resolve(&inputs, &mem).last().unwrap()
     }
     pub fn resolve(inputs: &Vec<i64>, mem: &Vec<i64>) -> Vec<i64> {
-        let (send_in, recv_out) = IntCode::run_async(mem);
+        let IntCodeClient{snd,rcv,idle: _} = IntCode::run_async(mem);
         for input in inputs {
-            let _ = send_in.send(*input);
+            let _ = snd.send(*input);
         }
-        recv_out.iter().collect()
+        rcv.iter().collect()
     }
     pub fn run(&mut self) {
         while self.csr.is_some() {
@@ -47,9 +50,12 @@ impl IntCode {
             1 => self.write_at(3, &param_modes, p1? + p2?), // add
             2 => self.write_at(3, &param_modes, p1? * p2?), // mul
             3 => { // read_in
+                *self.idle.lock().unwrap() = true;
                 if let Ok(input) = self.inputs.recv() {
+                    *self.idle.lock().unwrap() = false;
                     self.write_at(1, &param_modes, input)
                 } else {
+                    *self.idle.lock().unwrap() = false;
                     return None; // channel broken up..
                 }
             },
@@ -111,12 +117,19 @@ impl IntCode {
     }
 }
 
+pub struct IntCodeClient {
+    pub snd: Sender<i64>,
+    pub rcv: Receiver<i64>,
+    pub idle: Arc<Mutex<bool>>
+}
+
 pub struct IntCode {
     inputs: Receiver<i64>,
     output: Sender<i64>,
     csr: Option<usize>,
     mem: Vec<i64>,
     base: i64,
+    idle: Arc<Mutex<bool>>
 }
 
 fn parse_op(input: u32) -> (u32, Vec<u32>) {

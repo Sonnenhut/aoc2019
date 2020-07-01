@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use aoc2019::read_lines;
-use aoc2019::intcode::IntCode;
+use aoc2019::intcode::{IntCode, IntCodeClient};
 use std::sync::mpsc::{Sender, Receiver};
 
 fn main() {
@@ -88,8 +88,8 @@ struct Robot {
 
 impl Robot { // utility to reuse IntCode and not rerun every time...
     fn new(initial_location: &Vec<i64>, mem: &Vec<i64>) -> Robot {
-        let (send,recv) = IntCode::run_async(&mem);
-        let mut robot = Robot { send, recv, instr: vec![]};
+        let IntCodeClient {snd, rcv, idle: _} = IntCode::run_async(&mem);
+        let mut robot = Robot { send: snd, recv: rcv, instr: vec![]};
         robot.run(initial_location);
         robot.instr = vec![];
         robot

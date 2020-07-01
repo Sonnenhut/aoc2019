@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use aoc2019::intcode::IntCode;
+use aoc2019::intcode::{IntCode, IntCodeClient};
 use aoc2019::read_lines;
 use std::time::Duration;
 
@@ -12,20 +12,20 @@ fn main() {
 }
 
 fn pt1(mem: &Vec<i64>, start_panel: i64) -> HashMap<(i64,i64),i64> {
-    let (input, output) = IntCode::run_async(&mem);
+    let IntCodeClient {snd , rcv, idle: _} = IntCode::run_async(&mem);
     let mut colors : HashMap<(i64,i64), i64> = HashMap::new();
     let mut loc : (i64,i64,char) = (0,0,'^');
 
 
     let mut last_tile = Some(start_panel);
     while let Some(tile_color) = last_tile {
-        let _ = input.send(tile_color);
-        let new_tile = output.recv();
+        let _ = snd.send(tile_color);
+        let new_tile = rcv.recv();
 
         last_tile = if new_tile.is_ok() {
             colors.insert((loc.0, loc.1),new_tile.unwrap());
 
-            let direction = output.recv().unwrap();
+            let direction = rcv.recv().unwrap();
             loc = mod_loc(&loc, direction);
             colors.get(&(loc.0,loc.1)).cloned().or(Some(0))
         } else {None}

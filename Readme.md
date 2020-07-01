@@ -32,6 +32,8 @@ Attempt to solve aoc2019 in rust.
 
 [I am no maths guy...](https://www.reddit.com/r/adventofcode/comments/engeuy/2019_day_22_part_2_i_have_no_idea_where_to_start/)
 
+[sharing variables across threads; arc and mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
+
 ---
 ###### Ownership
 

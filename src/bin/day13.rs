@@ -3,7 +3,7 @@ use std::io;
 use std::io::Write;
 use std::thread;
 
-use aoc2019::intcode::IntCode;
+use aoc2019::intcode::{IntCode, IntCodeClient};
 use aoc2019::read_lines;
 use std::time::Duration;
 
@@ -16,25 +16,25 @@ fn main() {
 fn pt2(mem: &Vec<i64>, print: bool) -> i64 {
     let mut free_play = mem.to_vec();
     free_play[0] = 2;
-    let (input, output) = IntCode::run_async(&free_play);
+    let IntCodeClient {snd, rcv, idle: _ } = IntCode::run_async(&free_play);
     let mut map: HashMap<(i64,i64),i64> = HashMap::new();
 
     let mut ball_updated = false;
     let mut paddle_updated = false;
     loop {
-        let x_opt = output.recv();
+        let x_opt = rcv.recv();
         if x_opt.is_err() {
             println!("IntCode disconnected.");
             break;
         } else {
-            let (x, y, val) = (x_opt.unwrap(), output.recv().unwrap(), output.recv().unwrap());
+            let (x, y, val) = (x_opt.unwrap(), rcv.recv().unwrap(), rcv.recv().unwrap());
             map.insert((x, y), val);
 
             ball_updated |= val == 4;
             paddle_updated |= val == 3;
             if ball_updated && paddle_updated {
                 let res  = pos_x(4,&map).cmp(&pos_x(3,&map)) as i64;
-                let _ =input.send(res);
+                let _ = snd.send(res);
                 paddle_updated = res == 0; // paddle not changed, thus don't expect an update
                 ball_updated = false;
 

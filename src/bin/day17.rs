@@ -1,5 +1,5 @@
 use aoc2019::read_lines;
-use aoc2019::intcode::IntCode;
+use aoc2019::intcode::{IntCode, IntCodeClient};
 
 fn main() {
     let mem: Vec<i64> = read_lines(17)[0].split(',').map(|s| s.parse().unwrap()).collect();
@@ -11,7 +11,7 @@ fn main() {
 fn pt2(intcode_mem: &Vec<i64>) -> usize {
     let mut modified_mem = intcode_mem.to_vec();
     modified_mem[0] = 2;
-    let (i,o) = IntCode::run_async(&modified_mem);
+    let IntCodeClient {snd,rcv, idle:_} = IntCode::run_async(&modified_mem);
 
     let movement = "A,B,A,C,C,A,B,C,B,B";
     let a = "L,8,R,10,L,8,R,8";
@@ -20,15 +20,15 @@ fn pt2(intcode_mem: &Vec<i64>) -> usize {
     let use_vid = "n";
     let instr = format!("{}\n{}\n{}\n{}\n{}\n", movement,a,b,c,use_vid);
     for input in instr.chars() {
-        let _ = i.send(input as i64);
+        let _ = snd.send(input as i64);
     }
 
-    let output : Vec<i64> = o.iter().collect();
+    let output : Vec<i64> = rcv.iter().collect();
     *output.last().unwrap() as usize
 }
 
 fn pt1(intcode_mem: &Vec<i64>) -> usize {
-    let (_,o) = IntCode::run_async(&intcode_mem);
+    let IntCodeClient{snd:_, rcv:o, idle:_} = IntCode::run_async(&intcode_mem);
     let map = o.iter().collect();
     draw(&map);
     alignment_sum(&map)

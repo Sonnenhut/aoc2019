@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::iter::successors;
 use std::ops::RangeInclusive;
 
-use aoc2019::intcode::IntCode;
+use aoc2019::intcode::{IntCode, IntCodeClient};
 use aoc2019::read_lines;
 use std::sync::mpsc::{Sender, Receiver, RecvError};
 
@@ -20,9 +20,9 @@ fn max_feedback_loop(mem: &Vec<i64>) -> i64 {
 
 fn feedback_loop(seq: &Vec<u64>, mem: &Vec<i64>) -> i64 {
     let programs_io : Vec<(Sender<i64>, Receiver<i64>)> = seq.iter().map(|phase_instr| {
-        let (i, o) = IntCode::run_async(&mem);
-        let _ = i.send(*phase_instr as i64);
-        (i,o)
+        let IntCodeClient {snd, rcv, idle} = IntCode::run_async(&mem);
+        let _ = snd.send(*phase_instr as i64);
+        (snd,rcv)
     }).collect();
     let mut last : Result<i64, RecvError> = Ok(0_i64);
     loop {
