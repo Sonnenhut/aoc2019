@@ -28,21 +28,16 @@ fn pt1(mem: &Vec<i64>) -> i64 {
     computers.iter().enumerate().for_each(|(i,c)| c.snd.send(i as i64).unwrap());
 
     let mut broadcast_y = -1;
-    let mut loop_cnt = 0;
     while broadcast_y == -1 {
-        //println!("loop # {:?}", loop_cnt);
         let mut accessed_addr = vec![];
         computers.iter().enumerate().for_each(|(i, c)| {
             match c.rcv.try_recv().ok() {
                 Some(dest_addr) => {
-                    //println!("#{:?} sending to {:?}", i, dest_addr);
                     let x = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
                     let y = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
                     if dest_addr == 255 {
                         broadcast_y = y;
                     } else {
-                        //println!("X={:?}", x);
-                        //println!("Y={:?}", y);
                         computers[dest_addr as usize].snd.send(x);
                         computers[dest_addr as usize].snd.send(y);
                         accessed_addr.push(dest_addr);
@@ -51,14 +46,11 @@ fn pt1(mem: &Vec<i64>) -> i64 {
                 _ => {}
             }
         });
-        // snd -1
+
+        // snd -1 to everyone that is idling
         computers.iter()
-            .enumerate()
-            //.filter(|(i,c)| !accessed_addr.contains(&(*i as i64) ))
-            .for_each(|(i, c)| {
-                c.snd.send(-1).unwrap();
-            });
-        loop_cnt += 1;
+            .filter(|c| *c.idle.lock().unwrap())
+            .for_each(|c|  c.snd.send(-1).unwrap());
     }
 
     broadcast_y
@@ -75,17 +67,12 @@ fn pt2(mem: &Vec<i64>) -> i64 {
     let mut nat_payload : Option<(i64,i64)> = None;
     let mut nat_looped = false;
     let mut consecutive_idle = 0;
-    let mut loop_cnt = 0;
     while !nat_looped {
-        //println!("loop {:?}", loop_cnt);
         computers.iter().enumerate().for_each(|(i, c)| {
             match c.rcv.try_recv().ok() {
                 Some(dest_addr) => {
-                    //println!("#{:?} sending to {:?}", i, dest_addr);
                     let x = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
                     let y = c.rcv.recv_timeout(Duration::from_millis(100)).ok().unwrap();
-                    //println!("X={:?}", x);
-                    //println!("Y={:?}", y);
                     if dest_addr == 255 {
                         nat_payload = Some((x,y));
                     } else {
@@ -99,12 +86,10 @@ fn pt2(mem: &Vec<i64>) -> i64 {
         let all_idle = computers.iter().all(|c| *c.idle.lock().unwrap());
         let broadcast_msg = if consecutive_idle >= 2 { nat_payload } else { None };
         if let Some((x,y)) = broadcast_msg {
-            //println!("idle... nat is jumping in with {:?}",(x,y));
             computers[0].snd.send(x);
             computers[0].snd.send(y);
             consecutive_idle = 0;
             if last_nat_delivery.is_some() && last_nat_delivery.unwrap() == y {
-                //println!("NAT looped with value: {:?}", y);
                 nat_looped = true;
             } else {
                 last_nat_delivery = Some(y) // sent to #0
@@ -112,15 +97,11 @@ fn pt2(mem: &Vec<i64>) -> i64 {
         } else {
             consecutive_idle = if all_idle { consecutive_idle + 1} else { 0 };
 
-            // snd -1 to everyone that did not receive anything
-            computers.iter().enumerate()
-                //.filter(|(i, c)| !accessed_addr.contains(&(*i as i64)))
-                .for_each(|(i, c)| {
-                    c.snd.send(-1).unwrap();
-                });
+            // snd -1 to everyone that is idling
+            computers.iter()
+                .filter(|c| *c.idle.lock().unwrap())
+                .for_each(|c|  c.snd.send(-1).unwrap());
         };
-
-        loop_cnt += 1;
     }
 
     last_nat_delivery.unwrap()
