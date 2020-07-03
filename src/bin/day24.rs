@@ -69,14 +69,16 @@ fn parse_bugs(lines: Vec<String>) -> Vec<Vec<bool>>{
     lines.iter().map(|l| l.chars().map(|c| c == '#').collect()).collect()
 }
 
-/*
 fn evolve2(bugs: HashSet<Tile>) -> HashSet<Tile> {
-
+    let bug_copy = bugs.clone();
+    bugs.iter().flat_map(|bug| {
+        let tiles_around = around(&bug);
+        let bugs_around :
+    });
+    bug_copy
 }
 
- */
-
-fn around(tile: Tile) -> HashSet<Tile> {
+fn around(tile: &Tile) -> HashSet<Tile> {
     let Tile(row, col, depth) = tile;
     let mut res = HashSet::new();
     // -- tiles touching center
@@ -218,17 +220,17 @@ mod test {
     #[test]
     fn around_test() {
         // on same lvl
-        assert_eq!(around(Tile(1,1,0)),vec![Tile(2,1,0),Tile(0,1,0),Tile(1,0,0),Tile(1,2,0)].into_iter().collect());
+        assert_eq!(around(&Tile(1,1,0)),vec![Tile(2,1,0),Tile(0,1,0),Tile(1,0,0),Tile(1,2,0)].into_iter().collect());
         // Tile 19 has four adjacent tiles: 14, 18, 20, and 24.
-        assert_eq!(around(Tile(3,3,1)),vec![Tile(2,3,1),Tile(3,2,1),Tile(3,4,1),Tile(4,3,1)].into_iter().collect());
+        assert_eq!(around(&Tile(3,3,1)),vec![Tile(2,3,1),Tile(3,2,1),Tile(3,4,1),Tile(4,3,1)].into_iter().collect());
         // Tile D has four adjacent tiles: 8, C, E, and I.
-        assert_eq!(around(Tile(0,3,0)),vec![Tile(1,2,1),Tile(0,2,0),Tile(0,4,0),Tile(1,3,0)].into_iter().collect());
+        assert_eq!(around(&Tile(0,3,0)),vec![Tile(1,2,1),Tile(0,2,0),Tile(0,4,0),Tile(1,3,0)].into_iter().collect());
         // Tile E has four adjacent tiles: 8, D, 14, and J.
-        assert_eq!(around(Tile(0,4,0)), vec![Tile(1,2,1),Tile(2,3,1),Tile(0,3,0),Tile(1,4,0)].into_iter().collect());
+        assert_eq!(around(&Tile(0,4,0)), vec![Tile(1,2,1),Tile(2,3,1),Tile(0,3,0),Tile(1,4,0)].into_iter().collect());
         // Tile 14 has eight adjacent tiles: 9, E, J, O, T, Y, 15, and 19.
-        assert_eq!(around(Tile(2,3,1)), vec![Tile(0,4,0),Tile(1,4,0),Tile(2,4,0),Tile(3,4,0),Tile(4,4,0),Tile(3,3,1),Tile(1,3,1),Tile(2,4,1)].into_iter().collect());
+        assert_eq!(around(&Tile(2,3,1)), vec![Tile(0,4,0),Tile(1,4,0),Tile(2,4,0),Tile(3,4,0),Tile(4,4,0),Tile(3,3,1),Tile(1,3,1),Tile(2,4,1)].into_iter().collect());
         //Tile N has eight adjacent tiles: I, O, S, and five tiles within the sub-grid marked ?.
-        assert_eq!(around(Tile(2,3,0)), vec![Tile(0,4,-1),Tile(1,4,-1),Tile(2,4,-1),Tile(3,4,-1),Tile(4,4,-1),Tile(3,3,0),Tile(1,3,0),Tile(2,4,0)].into_iter().collect());
+        assert_eq!(around(&Tile(2,3,0)), vec![Tile(0,4,-1),Tile(1,4,-1),Tile(2,4,-1),Tile(3,4,-1),Tile(4,4,-1),Tile(3,3,0),Tile(1,3,0),Tile(2,4,0)].into_iter().collect());
     }
 
 }
