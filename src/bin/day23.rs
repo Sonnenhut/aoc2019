@@ -29,7 +29,6 @@ fn pt1(mem: &Vec<i64>) -> i64 {
 
     let mut broadcast_y = -1;
     while broadcast_y == -1 {
-        let mut accessed_addr = vec![];
         computers.iter().enumerate().for_each(|(i, c)| {
             match c.rcv.try_recv().ok() {
                 Some(dest_addr) => {
@@ -40,7 +39,6 @@ fn pt1(mem: &Vec<i64>) -> i64 {
                     } else {
                         computers[dest_addr as usize].snd.send(x);
                         computers[dest_addr as usize].snd.send(y);
-                        accessed_addr.push(dest_addr);
                     }
                 }
                 _ => {}
@@ -48,9 +46,7 @@ fn pt1(mem: &Vec<i64>) -> i64 {
         });
 
         // snd -1 to everyone that is idling
-        computers.iter()
-            .filter(|c| *c.idle.lock().unwrap())
-            .for_each(|c|  c.snd.send(-1).unwrap());
+        handle_empty_queue(&computers);
     }
 
     broadcast_y
@@ -84,7 +80,7 @@ fn pt2(mem: &Vec<i64>) -> i64 {
             }
         });
         let all_idle = computers.iter().all(|c| *c.idle.lock().unwrap());
-        let broadcast_msg = if consecutive_idle >= 2 { nat_payload } else { None };
+        let broadcast_msg = if consecutive_idle >= 5 { nat_payload } else { None };
         if let Some((x,y)) = broadcast_msg {
             computers[0].snd.send(x);
             computers[0].snd.send(y);
@@ -98,13 +94,17 @@ fn pt2(mem: &Vec<i64>) -> i64 {
             consecutive_idle = if all_idle { consecutive_idle + 1} else { 0 };
 
             // snd -1 to everyone that is idling
-            computers.iter()
-                .filter(|c| *c.idle.lock().unwrap())
-                .for_each(|c|  c.snd.send(-1).unwrap());
+            handle_empty_queue(&computers);
         };
     }
 
     last_nat_delivery.unwrap()
+}
+
+fn handle_empty_queue(computers: &Vec<IntCodeClient>) {
+    computers.iter()
+        .filter(|c| *c.idle.lock().unwrap())
+        .for_each(|c|  c.snd.send(-1).unwrap());
 }
 
 struct Computer {
