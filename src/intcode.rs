@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Sender, Receiver, channel, SyncSender, sync_channel};
+use std::sync::mpsc::{Sender, Receiver, channel };
 use std::thread;
 use std::sync::{Mutex, Arc};
 
