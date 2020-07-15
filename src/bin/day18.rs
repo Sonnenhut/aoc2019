@@ -6,34 +6,9 @@ use std::char::ToLowercase;
 use std::time::Instant;
 
 fn main() {
-    //let mem: Vec<i64> = read_lines(15)[0].split(',').map(|s| s.parse().unwrap()).collect();
-    //println!("pt1: {}", pt1(&mem)); // 336
+    let mem: Vec<String> = read_lines(18).iter().map(String::from).collect();
+    println!("pt1: {}", shortest_path_all_keys(&mem)); // 2684
     //println!("pt2: {}", pt2(&mem)); // 360
-
-    let mut ex =
-        "########################
-#f.D.E.e.C.b.A.@.a.B.c.#
-######################.#
-#d.....................#
-########################";
-
-    let mut maze = ex.split('\n').map(String::from).collect();
-    assert_eq!(shortest_path_all_keys(&maze),86);
-
-
-    ex =
-        "#################
-#i.G..c...e..H.p#
-########.########
-#j.A..b...f..D.o#
-########@########
-#k.E..a...g..B.n#
-########.########
-#l.F..d...h..C.m#
-#################";
-
-    maze = ex.split('\n').map(String::from).collect();
-    assert_eq!(shortest_path_all_keys(&maze),132);
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -45,7 +20,7 @@ struct State {
 impl Ord for State {
     fn cmp(&self, other: &State) -> Ordering {
         other.steps.cmp(&self.steps)
-            .then_with(|| other.position.collected_keys.len().cmp(&self.position.collected_keys.len()))
+            .then_with(|| *&self.position.collected_keys.len().cmp(&other.position.collected_keys.len()))
             .then_with(|| self.position.cmp(&other.position))
     }
 }
@@ -172,16 +147,19 @@ fn shortest_path_all_keys(maze: &Vec<String>) -> usize {
     let mut res = 0;
     while let Some(State { steps: steps, position: initial_position}) = heap.pop() {
         let mut position = initial_position.clone();
-        //println!("looking at: {:?}", position);
 
         // Skip if whe have a better way with the same key combination
-        if steps > *dist.get(&position).unwrap_or(&max) { continue; }
+        if steps > *dist.get(&position).unwrap_or(&max) {
+            dist.remove(&position);
+            prev.remove(&position);
+            continue;
+        }
 
         if position.collected_keys.len() == keys.len() {
             res = dist[&initial_position];
+            println!("FOUND ALL KEYS YEAH!");
             break;
         }
-
         // Check all neighbors from the current cursor
         for neighbour_coord in position.around() {
             let char_at = at_coord(&neighbour_coord, &maze);
@@ -189,7 +167,10 @@ fn shortest_path_all_keys(maze: &Vec<String>) -> usize {
                 continue;
             }
             let neighbour = if char_at.is_lowercase() && !neighbour_coord.collected_keys.contains(&char_at) {
-                Coord {collected_keys: [neighbour_coord.collected_keys, vec![char_at]].concat(), ..neighbour_coord}
+                let mut collected_keys = neighbour_coord.collected_keys.clone();
+                collected_keys.push(char_at);
+                collected_keys.sort();
+                Coord {collected_keys, ..neighbour_coord}
             } else { neighbour_coord };
 
             if char_at.is_uppercase() && !neighbour.collected_keys.contains(&char_at.to_lowercase().nth(0).unwrap()){
@@ -219,8 +200,18 @@ mod test {
         assert_eq!(pt2(&mem), 360);
     }*/
 
+
     #[test]
-    fn test() {
+    fn test_vector_equality() {
+        assert_ne!(vec![1,2,3,], vec![3,2,1]); // yup, thats an issue for my implementation
+        let mut sorted = vec![3,2,1];
+        sorted.sort();
+        assert_eq!(vec![1,2,3,], sorted);
+        assert_eq!(vec![1,2,3,], vec![1,2,3]);
+    }
+
+    #[test]
+    fn test_86() {
         let mut ex =
             "########################
 #f.D.E.e.C.b.A.@.a.B.c.#
@@ -229,10 +220,26 @@ mod test {
 ########################";
 
         let mut maze = ex.split('\n').map(String::from).collect();
-        assert_eq!(shortest_path_all_keys(&maze),86);
+        assert_eq!(shortest_path_all_keys(&maze), 86);
+    }
 
-        ex =
-"#################
+        #[test]
+        fn test_132() {
+            let ex =
+                "########################
+#...............b.C.D.f#
+#.######################
+#.....@.a.B.c.d.A.e.F.g#
+########################";
+
+            let maze = ex.split('\n').map(String::from).collect();
+            assert_eq!(shortest_path_all_keys(&maze), 132);
+        }
+
+    #[test]
+    fn test_136() {
+        let ex =
+            "#################
 #i.G..c...e..H.p#
 ########.########
 #j.A..b...f..D.o#
@@ -242,9 +249,8 @@ mod test {
 #l.F..d...h..C.m#
 #################";
 
-        maze = ex.split('\n').map(String::from).collect();
-        assert_eq!(shortest_path_all_keys(&maze),132);
-
+        let maze = ex.split('\n').map(String::from).collect();
+        assert_eq!(shortest_path_all_keys(&maze),136);
     }
 
     #[test]

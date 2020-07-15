@@ -95,14 +95,3 @@ fn printChannel(rcv: &Receiver<i64>){
         .for_each(|x| print!("{}", x as u8 as char));
 }
 
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn regression() {
-        let nums: Vec<Vec<String>> = read_lines(3).into_iter().map(|l| parse_wire(&l)).collect();
-        //assert_eq!(pt1(&nums), 375);
-        //assert_eq!(pt2(&nums), 14746);
-    }
-}
