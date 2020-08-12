@@ -7,8 +7,12 @@ use std::time::Instant;
 use std::iter::FromIterator;
 
 fn main() {
+
+    let now = Instant::now();
     let maze1: Vec<String> = read_lines(18).iter().map(String::from).collect();
     println!("pt1: {}", solve(&maze1)); // 2684
+    // 98 seconds
+    println!("calculation on pt1 took {} seconds", now.elapsed().as_secs());
 
     let maze2: Vec<String> = transform_pt2_maze(&maze1);
     println!("pt2: {}", solve(&maze2)); // 1886
@@ -34,24 +38,18 @@ impl PartialOrd for State {
 }
 
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
-struct Coord {
+struct Coord  {
     x: usize,
     y: usize,
     collected_keys: Vec<char>
 }
 
 impl Coord {
-    fn shift(&self, d: i64) -> Coord {
-        match d {
-            1 => Coord{x:self.x+1, y: self.y, collected_keys: self.collected_keys.clone()},
-            2 => Coord{x:self.x-1, y: self.y, collected_keys: self.collected_keys.clone()},
-            3 => Coord{x:self.x, y: self.y-1, collected_keys: self.collected_keys.clone()},
-            4 => Coord{x:self.x, y: self.y+1, collected_keys: self.collected_keys.clone()},
-            _ => panic!("cannot go in given direction (direction unknown)")
-        }
-    }
     fn around(&self) -> Vec<Coord> {
-        [self.shift(1), self.shift(2), self.shift(3), self.shift(4)].to_vec()
+        vec![Coord{x:self.x+1, y: self.y, collected_keys: self.collected_keys.clone()},
+            Coord{x:self.x-1, y: self.y, collected_keys: self.collected_keys.clone()},
+            Coord{x:self.x, y: self.y-1, collected_keys: self.collected_keys.clone()},
+            Coord{x:self.x, y: self.y+1, collected_keys: self.collected_keys.clone()}]
     }
 }
 
@@ -93,7 +91,7 @@ fn keys(maze: &Vec<String>) -> HashMap<char, Coord> {
 // parse coming from a location what are the (reached keys, reached doors)
 fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
     let mut keys = keys(&maze);
-    let start = coord.clone();
+    let mut start = coord.clone();
     println!("{:?}", start);
     println!("{:?}", keys);
 
@@ -103,12 +101,11 @@ fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
     let mut heap : BinaryHeap<State> = BinaryHeap::new();
 
     heap.push(State { steps: 0, position: start.clone()});
-    dist.insert(start.clone(), 0);
+    dist.insert(start, 0);
 
     let mut reached_doors = vec![];
     let mut reached_keys = vec![];
-    while let Some(State { steps: steps, position: initial_position}) = heap.pop() {
-        let mut position = initial_position.clone();
+    while let Some(State { steps: steps, position: mut position}) = heap.pop() {
 
         // Skip if whe have a shorter way
         if steps > *dist.get(&position).unwrap_or(&max) {
@@ -135,24 +132,24 @@ fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
     }
 
     reached_doors.sort();
-    reached_doors.dedup_by_key(|c| c.clone());
+    reached_doors.dedup_by_key(|c| *c);
     reached_keys.sort();
-    reached_keys.dedup_by_key(|c| c.clone());
+    reached_keys.dedup_by_key(|c| *c);
     (reached_keys, reached_doors)
 }
 
-fn shortest_path(maze: &Vec<String>, start: &Coord, wanted_keys: &HashSet<char>) -> usize {
+fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> usize {
     println!("start {:?}", start);
     println!("wanted keys{:?}", wanted_keys);
+    println!("collected keys{:?}", start.collected_keys);
 
     let max : usize = 999999999999999999;
     // build up distances in different subsets, based on what key is already collected
     let mut dist : HashMap<Coord, usize> = HashMap::new();
-    let mut prev : HashMap<Coord, Coord> = HashMap::new();
     let mut heap : BinaryHeap<State> = BinaryHeap::new();
 
     heap.push(State { steps: 0, position: start.clone()});
-    dist.insert(start.clone(), 0);
+    dist.insert(start, 0);
 
     let mut res = 0;
     while let Some(State { steps: steps, position: initial_position}) = heap.pop() {
@@ -161,7 +158,6 @@ fn shortest_path(maze: &Vec<String>, start: &Coord, wanted_keys: &HashSet<char>)
         // Skip if whe have a better way with the same key combination
         if steps > *dist.get(&position).unwrap_or(&max) {
             dist.remove(&position);
-            prev.remove(&position);
             continue;
         }
 
@@ -190,7 +186,6 @@ fn shortest_path(maze: &Vec<String>, start: &Coord, wanted_keys: &HashSet<char>)
             let mut next = State { steps: steps + 1, position: neighbour.clone()};
             if next.steps < *dist.get(&neighbour).unwrap_or(&max) {
                 dist.insert(neighbour.clone(), next.steps);
-                prev.insert(neighbour.clone(), position.clone());
                 heap.push(next);
             }
         }
@@ -206,10 +201,13 @@ fn solve(maze: &Vec<String>) -> usize {
     let mut res = 0;
     for mut startpoint in startpoints {
         let (reachable_keys, reachable_doors) = parse(&maze, &startpoint);
-        let unreachable_keys : HashSet<char> = reachable_doors.iter().map(|c| c.to_lowercase().nth(0).unwrap()).filter(|c| !reachable_keys.contains(c)).collect();
+        let unreachable_keys : HashSet<char> = reachable_doors.iter()
+            .map(|c| c.to_lowercase().nth(0).unwrap())
+            .filter(|c| !reachable_keys.contains(c)).collect();
 
         startpoint.collected_keys = unreachable_keys.clone().into_iter().collect(); // assume the fastest way when all keys are collected
-        res += shortest_path(&maze, &startpoint, &reachable_keys.clone().into_iter().collect());
+        //startpoint.collected_keys.sort();
+        res += shortest_path(&maze, startpoint, reachable_keys);
     }
     res
 }
@@ -336,6 +334,25 @@ mod test {
         let start = walkables(&maze).get(&'@').unwrap().clone();
         assert_eq!(parse(&maze, &start),(vec!['a','c','e','f','p','x'],vec!['H','Z']));
     }
+
+
+    #[test]
+    fn testbinary_heap_precedence() {
+        let mut heap: BinaryHeap<State> = BinaryHeap::new();
+        heap.push(State{steps: 2, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
+        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
+        heap.push(State{steps: 3, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
+        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:vec!['a']}});
+
+        let mut state = heap.pop().unwrap();
+        assert_eq!(1, state.steps);
+        assert_eq!(vec!['a','b'], state.position.collected_keys);
+
+        state = heap.pop().unwrap();
+        assert_eq!(1, state.steps);
+        assert_eq!(vec!['a'], state.position.collected_keys);
+    }
+
     #[test]
     fn test2_8() {
         let maze =
