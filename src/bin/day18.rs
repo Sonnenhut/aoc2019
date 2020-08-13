@@ -156,26 +156,26 @@ fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> us
     dist.insert(start, 0);
 
     let mut res = 0;
-    while let Some(State { steps: steps, position: initial_position}) = heap.pop() {
-        let mut position = initial_position.clone();
-
+    while let Some(State { steps: steps, position: position}) = heap.pop() {
         // Skip if whe have a better way with the same key combination
         if steps > *dist.get(&position).unwrap_or(&max) {
-            dist.remove(&position);
             continue;
         }
 
         if wanted_keys.iter().all(|k| position.collected_keys.contains(k)) {
-            res = dist[&initial_position];
+            res = dist[&position];
             println!("FOUND ALL KEYS YEAH!");
             break;
         }
+
         // Check all neighbors from the current cursor
         for neighbour_coord in position.around() {
             let char_at = at_coord(&neighbour_coord, &maze);
             if char_at == '#' {
                 continue;
             }
+
+            // update neighbor with new key if he is on one
             let neighbour = if char_at.is_lowercase() && !neighbour_coord.collected_keys.contains(&char_at) {
                 let mut collected_keys = neighbour_coord.collected_keys.to_vec();
                 collected_keys.push(char_at);
@@ -189,7 +189,7 @@ fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> us
 
             let mut next = State { steps: steps + 1, position: neighbour.clone()};
             if next.steps < *dist.get(&neighbour).unwrap_or(&max) {
-                dist.insert(neighbour.clone(), next.steps);
+                dist.insert(neighbour, next.steps);
                 heap.push(next);
             }
         }
