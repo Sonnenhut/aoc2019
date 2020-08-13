@@ -5,6 +5,9 @@ use std::slice::SliceIndex;
 use std::char::ToLowercase;
 use std::time::Instant;
 use std::iter::FromIterator;
+use std::borrow::Borrow;
+use std::rc::Rc;
+use std::convert::TryInto;
 
 fn main() {
 
@@ -38,10 +41,10 @@ impl PartialOrd for State {
 }
 
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
-struct Coord  {
+struct Coord {
     x: usize,
     y: usize,
-    collected_keys: Vec<char>
+    collected_keys: Rc<Vec<char>>
 }
 
 impl Coord {
@@ -57,12 +60,13 @@ fn at_coord(coord: &Coord, maze: &Vec<String>) -> char{
     maze[coord.y].chars().nth(coord.x).unwrap()
 }
 
-fn walkables(maze: &Vec<String>) -> HashMap<char, Coord> {
+fn walkables<'a>(maze: &'a Vec<String>) -> HashMap<char, Coord> {
+    let empty : Rc<Vec<char>> = Rc::new(vec![]);
     (0..maze.len())
         .flat_map(|y|
             (0..maze[y].len())
                 .filter_map(|x| {
-                    let coord = Coord{x,y, collected_keys: vec![]};
+                    let coord = Coord{x,y, collected_keys: empty.clone()};
                     let c = at_coord(&coord, &maze);
                     if c.is_lowercase() || c.is_uppercase() || c == '@' { Some((c, coord))} else { None }
                 }).collect::<Vec<(char, Coord)>>()
@@ -71,11 +75,12 @@ fn walkables(maze: &Vec<String>) -> HashMap<char, Coord> {
 }
 
 fn entries(maze: &Vec<String>) -> Vec<Coord> {
+    let empty = Rc::new(vec![]);
     (0..maze.len())
         .flat_map(|y|
             (0..maze[y].len())
                 .filter_map(|x| {
-                    let coord = Coord{x,y, collected_keys: vec![]};
+                    let coord = Coord{x,y, collected_keys: empty.clone()};
                     let c = at_coord(&coord, &maze);
                     if c == '@' { Some(coord)} else { None }
                 }).collect::<Vec<Coord>>()
@@ -84,9 +89,8 @@ fn entries(maze: &Vec<String>) -> Vec<Coord> {
 }
 
 fn keys(maze: &Vec<String>) -> HashMap<char, Coord> {
-    walkables(&maze).into_iter().filter(|(ch, coord)| ch.is_lowercase()).collect()
+    walkables(&maze).into_iter().filter(|(ch, _)| ch.is_lowercase()).collect()
 }
-
 
 // parse coming from a location what are the (reached keys, reached doors)
 fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
@@ -105,7 +109,7 @@ fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
 
     let mut reached_doors = vec![];
     let mut reached_keys = vec![];
-    while let Some(State { steps: steps, position: mut position}) = heap.pop() {
+    while let Some(State { steps: steps, position: position}) = heap.pop() {
 
         // Skip if whe have a shorter way
         if steps > *dist.get(&position).unwrap_or(&max) {
@@ -173,10 +177,10 @@ fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> us
                 continue;
             }
             let neighbour = if char_at.is_lowercase() && !neighbour_coord.collected_keys.contains(&char_at) {
-                let mut collected_keys = neighbour_coord.collected_keys.clone();
+                let mut collected_keys = neighbour_coord.collected_keys.to_vec();
                 collected_keys.push(char_at);
                 collected_keys.sort();
-                Coord {collected_keys, ..neighbour_coord}
+                Coord {collected_keys: Rc::new(collected_keys), ..neighbour_coord}
             } else { neighbour_coord };
 
             if char_at.is_uppercase() && !neighbour.collected_keys.contains(&char_at.to_lowercase().nth(0).unwrap()){
@@ -205,7 +209,8 @@ fn solve(maze: &Vec<String>) -> usize {
             .map(|c| c.to_lowercase().nth(0).unwrap())
             .filter(|c| !reachable_keys.contains(c)).collect();
 
-        startpoint.collected_keys = unreachable_keys.clone().into_iter().collect(); // assume the fastest way when all keys are collected
+        let vec : Vec<char> = unreachable_keys.clone().into_iter().collect(); // assume the fastest way when all keys are collected
+        startpoint.collected_keys = Rc::from(vec);
         //startpoint.collected_keys.sort();
         res += shortest_path(&maze, startpoint, reachable_keys);
     }
@@ -213,19 +218,20 @@ fn solve(maze: &Vec<String>) -> usize {
 }
 
 fn transform_pt2_maze(maze: &Vec<String>) -> Vec<String> {
+    let empty = Rc::new(vec![]);
     let original_start = walkables(&maze).remove(&'@').unwrap();
     let walls = [original_start.around(), vec![original_start.clone()]].concat();
     let portals = [
-        Coord{x : original_start.x - 1,y: original_start.y - 1, collected_keys: vec![]},
-        Coord{x : original_start.x - 1,y: original_start.y + 1, collected_keys: vec![]},
-        Coord{x : original_start.x + 1,y: original_start.y - 1, collected_keys: vec![]},
-        Coord{x : original_start.x + 1,y: original_start.y + 1, collected_keys: vec![]}
+        Coord{x : original_start.x - 1,y: original_start.y - 1, collected_keys: empty.clone()},
+        Coord{x : original_start.x - 1,y: original_start.y + 1, collected_keys: empty.clone()},
+        Coord{x : original_start.x + 1,y: original_start.y - 1, collected_keys: empty.clone()},
+        Coord{x : original_start.x + 1,y: original_start.y + 1, collected_keys: empty.clone()}
     ];
     (0..maze.len())
         .map(|y|
             (0..maze[y].len())
                 .map(|x| {
-                    let coord = Coord{x,y, collected_keys: vec![]};
+                    let coord = Coord{x,y, collected_keys: empty.clone()};
                     if walls.contains(&coord) { '#' }
                     else if portals.contains(&coord) { '@' }
                     else {at_coord(&coord, &maze)}
