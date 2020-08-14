@@ -12,9 +12,9 @@ use std::convert::TryInto;
 fn main() {
 
     let now = Instant::now();
-    let maze1: Vec<String> = read_lines(18).iter().map(String::from).collect();
+    let maze1: Vec<Vec<char>> = read_lines(18).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
     println!("pt1: {}", solve(&maze1)); // 2684
-    // 98 seconds
+    // 98 seconds; 70s; 45
     println!("calculation on pt1 took {} seconds", now.elapsed().as_secs());
 
     let maze2: Vec<String> = transform_pt2_maze(&maze1);
@@ -56,11 +56,11 @@ impl Coord {
     }
 }
 
-fn at_coord(coord: &Coord, maze: &Vec<String>) -> char{
-    maze[coord.y].chars().nth(coord.x).unwrap()
+fn at_coord(coord: &Coord, maze: &Vec<Vec<char>>) -> char{
+    maze[coord.y][coord.x]
 }
 
-fn walkables<'a>(maze: &'a Vec<String>) -> HashMap<char, Coord> {
+fn walkables(maze: &Vec<Vec<char>>) -> HashMap<char, Coord> {
     let empty : Rc<Vec<char>> = Rc::new(vec![]);
     (0..maze.len())
         .flat_map(|y|
@@ -74,7 +74,7 @@ fn walkables<'a>(maze: &'a Vec<String>) -> HashMap<char, Coord> {
         .collect()
 }
 
-fn entries(maze: &Vec<String>) -> Vec<Coord> {
+fn entries(maze: &Vec<Vec<char>>) -> Vec<Coord> {
     let empty = Rc::new(vec![]);
     (0..maze.len())
         .flat_map(|y|
@@ -88,12 +88,12 @@ fn entries(maze: &Vec<String>) -> Vec<Coord> {
         .collect()
 }
 
-fn keys(maze: &Vec<String>) -> HashMap<char, Coord> {
+fn keys(maze: &Vec<Vec<char>>) -> HashMap<char, Coord> {
     walkables(&maze).into_iter().filter(|(ch, _)| ch.is_lowercase()).collect()
 }
 
 // parse coming from a location what are the (reached keys, reached doors)
-fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
+fn parse(maze: &Vec<Vec<char>>, coord: &Coord) -> (Vec<char>, Vec<char>) {
     let mut keys = keys(&maze);
     let mut start = coord.clone();
     println!("{:?}", start);
@@ -142,7 +142,7 @@ fn parse(maze: &Vec<String>, coord: &Coord) -> (Vec<char>, Vec<char>) {
     (reached_keys, reached_doors)
 }
 
-fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> usize {
+fn shortest_path(maze: &Vec<Vec<char>>, start: Coord, wanted_keys: Vec<char>) -> usize {
     println!("start {:?}", start);
     println!("wanted keys{:?}", wanted_keys);
     println!("collected keys{:?}", start.collected_keys);
@@ -199,7 +199,7 @@ fn shortest_path(maze: &Vec<String>, start: Coord, wanted_keys: Vec<char>) -> us
 }
 
 // for pt2: assume that the optimal path for each quadrant if all the other quadrants were already solved
-fn solve(maze: &Vec<String>) -> usize {
+fn solve(maze: &Vec<Vec<char>>) -> usize {
     let startpoints = entries(maze);
 
     let mut res = 0;
@@ -217,7 +217,7 @@ fn solve(maze: &Vec<String>) -> usize {
     res
 }
 
-fn transform_pt2_maze(maze: &Vec<String>) -> Vec<String> {
+fn transform_pt2_maze(maze: &Vec<Vec<char>>) -> Vec<String> {
     let empty = Rc::new(vec![]);
     let original_start = walkables(&maze).remove(&'@').unwrap();
     let walls = [original_start.around(), vec![original_start.clone()]].concat();
