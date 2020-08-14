@@ -60,15 +60,15 @@ impl IntCode {
                 }
             },
             4 => { //write_out
-                let _ =self.output.send(p1?);
+                let _ =self.output.send(*p1?);
                 Some(csr + 2)
             },
-            5 => if p1? != 0 { Some(p2? as usize) } else { Some(csr + 3) }, // jump-if-true
-            6 => if p1? == 0 { Some(p2? as usize) } else { Some(csr + 3) },// jump-if-false
+            5 => if p1? != &0 { Some(*p2? as usize) } else { Some(csr + 3) }, // jump-if-true
+            6 => if p1? == &0 { Some(*p2? as usize) } else { Some(csr + 3) },// jump-if-false
             7 => self.write_at(3, &param_modes, (p1? < p2?) as i64), // less-than
             8 => self.write_at(3, &param_modes, (p1? == p2?) as i64), // eq
             9 => { // adjust-relative-base
-                self.base += p1?;
+                self.base += *p1?;
                 Some(csr + 2)
             },
             99 => None,
@@ -84,19 +84,19 @@ impl IntCode {
         Some(self.csr.unwrap() + offset + 1) // new cursor after writing
     }
 
-    fn params(&self,param_modes: &Vec<u32>) -> (Option<i64>, Option<i64>){
+    fn params(&self,param_modes: &Vec<u32>) -> (Option<&i64>, Option<&i64>){
         let csr = self.csr.unwrap();
-        let p1 : Option<i64> = self.resolve_param_csr(1,&param_modes)
+        let p1 : Option<&i64> = self.resolve_param_csr(1,&param_modes)
             .map(|c| self.get_at(c as usize)) // at csr
             .or_else(|| Some(self.get_at(csr+1))); // immediate
-        let p2 :Option<i64> = self.resolve_param_csr(2,&param_modes)
+        let p2 :Option<&i64> = self.resolve_param_csr(2,&param_modes)
             .map(|c| self.get_at(c as usize))
             .or_else(|| Some(self.get_at(csr+2)));
 
         (p1,p2)
     }
-    fn get_at(&self, csr: usize) -> i64 {
-        self.mem.get(csr).cloned().unwrap_or(0)
+    fn get_at(&self, csr: usize) -> &i64 {
+        self.mem.get(csr).unwrap_or(&0)
     }
 
     fn resolve_param_csr(&self, offset: usize, param_modes: &Vec<u32>) -> Option<i64> {
@@ -105,12 +105,12 @@ impl IntCode {
         let val_at_csr = Some(self.get_at((csr + offset) as usize));
         if mode == 0 {
             // get at csr
-            val_at_csr
+            val_at_csr.cloned()
         } else if mode == 1 {
             None // does not support immediate mode, users should take care of that on their own when None is specified
         } else if mode == 2 {
             // get at base + csr
-            val_at_csr.map(|c| (self.base + c))
+            val_at_csr.map(|c| (self.base + *c))
         } else {
             panic!("ParamMode not defined!")
         }
