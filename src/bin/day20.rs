@@ -12,16 +12,16 @@ const START_NAME: &str = "AA";
 const GOAL_NAME: &str = "ZZ";
 
 fn main() {
-    let mem: Vec<String> = read_lines(20);
+    let mem: Vec<Vec<char>> = read_lines(20).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
     println!("pt1: {}", pt1(&mem)); // 498
     println!("pt2: {}", pt2(&mem)); // 5564
 }
 
-fn pt1(maze: &Vec<String>) -> usize {
+fn pt1(maze: &Vec<Vec<char>>) -> usize {
     let (start, goal) = start_and_goal(maze);
     shortest_path(&maze, start, goal, false).unwrap()
 }
-fn pt2(maze: &Vec<String>) -> usize {
+fn pt2(maze: &Vec<Vec<char>>) -> usize {
     let (start, goal) = start_and_goal(maze);
     shortest_path(&maze, start, goal, true).unwrap()
 }
@@ -53,10 +53,9 @@ impl PartialOrd for State {
     }
 }
 
-fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: bool) -> Option<usize> {
+fn shortest_path(maze: &Vec<Vec<char>>, start: Coord, goal: Coord, with_levels: bool) -> Option<usize> {
     let shortcuts = connected_portals(maze);
     let mut dist : HashMap<Edge, usize> = HashMap::new();
-    let mut prev : HashMap<Edge, Edge> = HashMap::new();
     let mut heap = BinaryHeap::new();
 
     dist.insert(Edge{position: start.clone(), level: 0},0);
@@ -88,7 +87,6 @@ fn shortest_path(maze: &Vec<String>, start: Coord, goal: Coord, with_levels: boo
             if next.cost < *dist.get(&next.edge).unwrap_or(&usize::max_value()) {
                 heap.push(next.clone());
                 dist.insert(next.edge.clone(), next.cost);
-                prev.insert(next.edge.clone(), edge.clone());
             }
         }
     }
@@ -101,13 +99,13 @@ struct Coord {
     y: usize
 }
 
-fn at_coord(coord: &Coord, maze: &Vec<String>) -> Option<char> {
-    maze.get(coord.y).map(|mz| mz.chars().nth(coord.x))
-        .filter(|opt|opt.is_some())
-        .map(|opt|opt.unwrap())
+fn at_coord(coord: &Coord, maze: &Vec<Vec<char>>) -> Option<char> {
+    maze.get(coord.y)
+        .and_then(|row| row.get(coord.x))
+        .map(|c| *c)
 }
 
-fn portals(maze: &Vec<String>) -> Vec<(String, Coord)> {
+fn portals(maze: &Vec<Vec<char>>) -> Vec<(String, Coord)> {
     portal_parts(maze).iter()
         .filter_map(|c|  {
             let surroundings = around(c,maze);
@@ -129,11 +127,11 @@ fn portals(maze: &Vec<String>) -> Vec<(String, Coord)> {
         ).collect()
 }
 
-fn portal_parts(maze: &Vec<String>) -> Vec<Coord> {
+fn portal_parts(maze: &Vec<Vec<char>>) -> Vec<Coord> {
     maze.iter()
         .enumerate()
         .flat_map(|(y,row)| {
-            row.chars().enumerate()
+            row.iter().enumerate()
                 .filter(|(x,c)| c.is_alphabetic())
                 .map(|(x,_)| Coord{x,y})
                 .collect::<Vec<Coord>>()
@@ -141,14 +139,14 @@ fn portal_parts(maze: &Vec<String>) -> Vec<Coord> {
         .collect()
 }
 
-fn start_and_goal(maze: &Vec<String>) -> (Coord, Coord) {
+fn start_and_goal(maze: &Vec<Vec<char>>) -> (Coord, Coord) {
     let portals: Vec<(String, Coord)> = portals(maze);
     let start = portals.iter().filter(|t| &t.0 == START_NAME).nth(0).unwrap().1.clone();
     let goal = portals.iter().filter(|t| &t.0 == GOAL_NAME).nth(0).unwrap().1.clone();
     (start,goal)
 }
 
-fn connected_portals(maze: &Vec<String>) -> HashMap<Coord, Coord> {
+fn connected_portals(maze: &Vec<Vec<char>>) -> HashMap<Coord, Coord> {
     let portals: Vec<(String, Coord)> = portals(maze);
 
     let connected_portals: HashMap<Coord, Coord> = portals.clone().into_iter()
@@ -165,7 +163,7 @@ fn connected_portals(maze: &Vec<String>) -> HashMap<Coord, Coord> {
     connected_portals
 }
 
-fn around(c: &Coord, maze: &Vec<String>) -> Vec<(Coord, char)> {
+fn around(c: &Coord, maze: &Vec<Vec<char>>) -> Vec<(Coord, char)> {
     vec![c.x.checked_sub(1).map(|x|Coord{x, y:c.y}), // left
          c.x.checked_add(1).map(|x|Coord{x, y:c.y}), // right
          c.y.checked_sub(1).map(|y|Coord{x:c.x, y}), // above
@@ -175,14 +173,14 @@ fn around(c: &Coord, maze: &Vec<String>) -> Vec<(Coord, char)> {
         .filter_map(|new_c| at_coord(&new_c, maze).map(|charr|(new_c, charr)))
         .collect()
 }
-fn around_walkable(c: &Coord, maze: &Vec<String>) -> Vec<Coord> {
+fn around_walkable(c: &Coord, maze: &Vec<Vec<char>>) -> Vec<Coord> {
     around(c,maze).into_iter()
         .filter(|(portalCoord,charr)| *charr == '.')
         .map(|t|t.0)
         .collect()
 }
 
-fn is_at_outer_edge(c: &Coord, maze: &Vec<String>) -> bool {
+fn is_at_outer_edge(c: &Coord, maze: &Vec<Vec<char>>) -> bool {
     let max_y = maze.len() - 1;
     let max_x = maze.iter().map(|s|s.len()).max().unwrap() - 1;
     (0_usize..=2_usize).contains(&c.x) // left edge
@@ -197,7 +195,7 @@ mod test {
 
     #[test]
     fn regression() {
-        let mem: Vec<String> = read_lines(20);
+        let mem: Vec<Vec<char>> = read_lines(20).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(pt1(&mem), 498);
         assert_eq!(pt2(&mem), 5564);
     }
@@ -242,7 +240,7 @@ RE....#.#                           #......RF
   #############.#.#.###.###################
                A O F   N
                A A D   M                     ";
-        let mut maze = ex.split('\n').map(String::from).collect();
+        let mut maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(connected_portals(&maze).contains_key(&Coord{x:13,y:3}), false); // ZZ not connected
 
         assert_eq!(pt2(&maze), 396);
@@ -250,7 +248,7 @@ RE....#.#                           #......RF
 
     #[test]
     fn test_connected_portals() {
-        let maze: Vec<String> = read_lines(20);
+        let maze: Vec<Vec<char>> = read_lines(20).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(connected_portals(&maze)[&Coord{x:39,y:2}], Coord{x:26,y:61}); // SS is found
         assert_eq!(connected_portals(&maze)[&Coord{x:26,y:61}], Coord{x:39,y:2});
 
@@ -282,7 +280,7 @@ FG..#########.....#
   ###########.#####
              Z
              Z       ";
-        let mut maze = ex.split('\n').map(String::from).collect();
+        let mut maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(is_at_outer_edge(&Coord{x:0,y:6},&maze), true); // left
         assert_eq!(is_at_outer_edge(&Coord{x:1,y:6},&maze), true); // left
         assert_eq!(is_at_outer_edge(&Coord{x:2,y:6},&maze), true); // left
@@ -331,7 +329,7 @@ FG..#########.....#
   ###########.#####
              Z
              Z       ";
-        let mut maze = ex.split('\n').map(String::from).collect();
+        let mut maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(at_coord(&Coord {x:9,y:0},&maze),Some('A'));
         assert_eq!(at_coord(&Coord {x:9,y:1},&maze),Some('A'));
         assert_eq!(at_coord(&Coord {x:9,y:2},&maze),Some('.'));
@@ -376,7 +374,7 @@ YN......#               VT..#....QG
   #########.###.###.#############
            B   J   C
            U   P   P               ";
-        maze = ex.split('\n').map(String::from).collect();
+        maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(pt1(&maze), 58);
     }
 }
