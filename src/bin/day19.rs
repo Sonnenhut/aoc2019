@@ -19,11 +19,9 @@ fn pt1(mem: &Vec<i64>) -> usize {
 }
 
 fn pt2(mem: &Vec<i64>) -> usize {
-    let mut lazor: HashSet<(usize, usize)> = HashSet::new();
     let mut last_lazer_y_start = 0;
 
-    for x in 0.. {
-        if x < 99 { continue; }
+    for x in 99.. {
         for y in last_lazer_y_start.. {
             let out = IntCode::resolve_single(&vec![x, y], &mem);
 
@@ -53,7 +51,8 @@ mod test {
     #[test]
     fn regression() {
         let mem: Vec<i64> = read_lines(19)[0].split(',').map(|s| s.parse().unwrap()).collect();
-        assert_eq!(gauge_beam(&mem), 234);
+        assert_eq!(pt1(&mem), 234);
+        assert_eq!(pt2(&mem), 9290812);
 
     }
 }
