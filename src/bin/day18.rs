@@ -10,14 +10,13 @@ use std::rc::Rc;
 use std::convert::TryInto;
 
 fn main() {
-
     let now = Instant::now();
     let maze1: Vec<Vec<char>> = read_lines(18).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
     println!("pt1: {}", solve(&maze1)); // 2684
-    // 98 seconds; 70s; 45
+
     println!("calculation on pt1 took {} seconds", now.elapsed().as_secs());
 
-    let maze2: Vec<String> = transform_pt2_maze(&maze1);
+    let maze2: Vec<Vec<char>> = transform_pt2_maze(&maze1);
     println!("pt2: {}", solve(&maze2)); // 1886
 }
 
@@ -157,12 +156,14 @@ fn shortest_path(maze: &Vec<Vec<char>>, start: Coord, wanted_keys: Vec<char>) ->
 
     let mut res = 0;
     while let Some(State { steps: steps, position: position}) = heap.pop() {
-        // Skip if whe have a better way with the same key combination
-        if steps > *dist.get(&position).unwrap_or(&max) {
-            continue;
-        }
 
-        if wanted_keys.iter().all(|k| position.collected_keys.contains(k)) {
+        // Skip if whe have a better way with the same key combination
+        //if steps > *dist.get(&position).unwrap_or(&max) {
+        //    continue;
+        //}
+
+        if wanted_keys.len() == position.collected_keys.len()
+            && wanted_keys.iter().all(|k| position.collected_keys.contains(k)) {
             res = dist[&position];
             println!("FOUND ALL KEYS YEAH!");
             break;
@@ -217,7 +218,7 @@ fn solve(maze: &Vec<Vec<char>>) -> usize {
     res
 }
 
-fn transform_pt2_maze(maze: &Vec<Vec<char>>) -> Vec<String> {
+fn transform_pt2_maze(maze: &Vec<Vec<char>>) -> Vec<Vec<char>> {
     let empty = Rc::new(vec![]);
     let original_start = walkables(&maze).remove(&'@').unwrap();
     let walls = [original_start.around(), vec![original_start.clone()]].concat();
@@ -235,7 +236,7 @@ fn transform_pt2_maze(maze: &Vec<Vec<char>>) -> Vec<String> {
                     if walls.contains(&coord) { '#' }
                     else if portals.contains(&coord) { '@' }
                     else {at_coord(&coord, &maze)}
-                }).collect::<String>()
+                }).collect::<Vec<char>>()
         )
         .collect()
 }
@@ -246,10 +247,10 @@ mod test {
 
     #[test]
     fn regression() {
-        let maze1: Vec<String> = read_lines(18).iter().map(String::from).collect();
+        let maze1: Vec<Vec<char>> = read_lines(18).iter().map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(solve(&maze1), 2684); // 2684
 
-        let maze2: Vec<String> = transform_pt2_maze(&maze1);
+        let maze2: Vec<Vec<char>> = transform_pt2_maze(&maze1);
         assert_eq!(solve(&maze2), 1886); // 1886
     }
 
@@ -273,15 +274,15 @@ mod test {
 ##.@.##
 ##...##
 #cB#Ab#
-#######".split('\n').map(String::from).collect();
-        let maze_after : Vec<String> =
+#######".split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
+        let maze_after : Vec<Vec<char>> =
 "#######
 #a.#Cd#
 ##@#@##
 #######
 ##@#@##
 #cB#Ab#
-#######".split('\n').map(String::from).collect();
+#######".split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(transform_pt2_maze(&maze_before), maze_after);
     }
 
@@ -294,7 +295,7 @@ mod test {
 #d.....................#
 ########################";
 
-        let mut maze = ex.split('\n').map(String::from).collect();
+        let mut maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(solve(&maze), 86);
     }
 
@@ -307,7 +308,7 @@ mod test {
 #.....@.a.B.c.d.A.e.F.g#
 ########################";
 
-            let maze = ex.split('\n').map(String::from).collect();
+            let maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
             assert_eq!(solve(&maze), 132);
         }
 
@@ -324,7 +325,7 @@ mod test {
 #l.F..d...h..C.m#
 #################";
 
-        let maze = ex.split('\n').map(String::from).collect();
+        let maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(solve(&maze),136);
     }
 
@@ -336,7 +337,7 @@ mod test {
 ########@########
 #################";
 
-        let maze = ex.split('\n').map(String::from).collect();
+        let maze = ex.split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         let start = walkables(&maze).get(&'@').unwrap().clone();
         assert_eq!(parse(&maze, &start),(vec!['a','c','e','f','p','x'],vec!['H','Z']));
     }
@@ -345,18 +346,18 @@ mod test {
     #[test]
     fn testbinary_heap_precedence() {
         let mut heap: BinaryHeap<State> = BinaryHeap::new();
-        heap.push(State{steps: 2, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
-        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
-        heap.push(State{steps: 3, position: Coord {x:0,y:0,collected_keys:vec!['a','b']}});
-        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:vec!['a']}});
+        heap.push(State{steps: 2, position: Coord {x:0,y:0,collected_keys:Rc::new(vec!['a','b'])}});
+        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:Rc::new(vec!['a','b'])}});
+        heap.push(State{steps: 3, position: Coord {x:0,y:0,collected_keys:Rc::new(vec!['a','b'])}});
+        heap.push(State{steps: 1, position: Coord {x:0,y:0,collected_keys:Rc::new(vec!['a'])}});
 
         let mut state = heap.pop().unwrap();
         assert_eq!(1, state.steps);
-        assert_eq!(vec!['a','b'], state.position.collected_keys);
+        assert_eq!(Rc::new(vec!['a','b']), state.position.collected_keys);
 
         state = heap.pop().unwrap();
         assert_eq!(1, state.steps);
-        assert_eq!(vec!['a'], state.position.collected_keys);
+        assert_eq!(Rc::new(vec!['a']), state.position.collected_keys);
     }
 
     #[test]
@@ -368,7 +369,7 @@ mod test {
 #######
 ##@#@##
 #cB#Ab#
-#######".split('\n').map(String::from).collect();
+#######".split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(solve(&maze),8);
     }
     #[test]
@@ -384,7 +385,7 @@ mod test {
 #M###N#H###.#
 #o#m..#i#jk.#
 #############"
-                .split('\n').map(String::from).collect();
+                .split('\n').map(|s| s.chars().collect::<Vec<char>>()).collect();
         assert_eq!(solve(&maze),72);
     }
 
